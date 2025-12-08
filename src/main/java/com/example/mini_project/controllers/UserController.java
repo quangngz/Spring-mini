@@ -2,8 +2,12 @@ package com.example.mini_project.controllers;
 import com.example.mini_project.entities.User;
 import com.example.mini_project.exception.UserIdNotFoundException;
 import com.example.mini_project.repositories.UserRepository;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -19,6 +23,8 @@ import java.util.Optional;
 public class UserController {
     private final UserRepository userRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     public UserController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
@@ -44,24 +50,33 @@ public class UserController {
         return userRepository.searchByCustom(firstName, lastName, address, phoneNum, cityName, begin, end);
     }
 
-    @Cacheable(value = "users", key="#userName")
-    @GetMapping("/{userName}")
-    public Optional<User> getUserByUserName(@PathVariable("userName") String userName) {
-        return userRepository.findByUserName(userName);
-    }
-
     @Cacheable(value="users", key="#id")
     @GetMapping("/{id}")
     public Optional<User> getUserById(@PathVariable("id") Integer id) {
         return userRepository.findById(id);
     }
 
-    @PostMapping("/")
-    public User createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
-        if (bindingResult.hasErrors()) {
-            throw new BindException(bindingResult);
+//    @PostMapping("/")
+//    public User createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
+//        if (bindingResult.hasErrors()) {
+//            throw new BindException(bindingResult);
+//        }
+//        return userRepository.save(user);
+//    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody User user) {
+        if (userRepository.findByUserName(user.getUserName()).isPresent()) {
+            return ResponseEntity.badRequest().body("Username already exists");
         }
-        return userRepository.save(user);
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        if (user.getRole() == null) {
+            user.setRole("ROLE_USER");
+        }
+
+        User savedUser = userRepository.save(user);
+        return ResponseEntity.ok(savedUser);
     }
 
     @PutMapping("/{id}")
@@ -118,4 +133,6 @@ public class UserController {
                 .toList();
         throw new IllegalArgumentException("Vi phạm yêu cầu của Database tại: "  + errors);
     }
+
+
 }

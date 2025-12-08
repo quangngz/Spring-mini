@@ -13,27 +13,6 @@ public interface UserRepository extends CrudRepository<User, Integer> {
     // Tính tuổi trên ngày sinh chỉ sử dụng được cho H2
     Optional<User> findByUserName(String userName);
 
-    List<User> findByFirstName(String firstName);
-    List<User> findByLastName(String lastName);
-    List<User> findByFirstNameAndLastName(String firstName, String lastName);
-
-    List<User> findByPhoneNum(String phoneNum);
-    List<User> findByFirstNameAndPhoneNum(String firstName, String phoneNum);
-    List<User> findByLastNameAndPhoneNum(String lastName, String phoneNum);
-    List<User> findByFirstNameAndLastNameAndPhoneNum(String firstName, String lastName, String phoneNum);
-
-    List<User> findByAddress(String address);
-    List<User> findByFirstNameAndAddress(String firstName, String address);
-    List<User> findByLastNameAndAddress(String lastName, String address);
-    List<User> findByFirstNameAndLastNameAndAddress(String firstName, String lastName, String address);
-    List<User> findByPhoneNumAndAddress(String phoneNum, String address);
-    List<User> findByFirstNameAndPhoneNumAndAddress(String firstName, String phoneNum, String address);
-    List<User> findByLastNameAndPhoneNumAndAddress(String lastName, String phoneNum, String address);
-    List<User> findByFirstNameAndLastNameAndPhoneNumAndAddress(String firstName, String lastName, String phoneNum, String address);
-
-    List<User> findByDobBetween(LocalDate begin, LocalDate end);
-    @Query("SELECT u FROM User u WHERE u.address LIKE %:cityName%")
-    List<User> findByCity(@Param("cityName") String cityName);
     @Query("SELECT u FROM User u WHERE " +
             "(:firstName IS NULL OR u.firstName = :firstName) AND " +
             "(:lastName IS NULL OR u.lastName = :lastName) AND " +

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @NotNull
     @Column(name="USER_NAME", unique = true)
@@ -36,12 +36,18 @@ public class User {
     @Column(name="ADDRESS")
     private String address;
 
-    @NotBlank
+
     @DateTimeFormat
     @Column(name="DOB")
     private LocalDate dob;
 
-    public Integer getId() {
+    @Column(name="ROLE")
+    private String role;
+
+    @NotNull
+    @Column(name="PASSWORD")
+    private String password;
+    public Long getId() {
         return id;
     }
     public String getFirstName() {
@@ -67,7 +73,15 @@ public class User {
         return dob;
     }
 
-    public void setId(Integer id) {
+    public String getPassword() {
+        return password;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -77,6 +91,10 @@ public class User {
 
     public void setFirstName(String firstName) {
         this.firstName = firstName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public void setLastName(String lastName) {
@@ -92,5 +110,13 @@ public class User {
     }
     public void setDob(LocalDate dob) {
         this.dob = dob;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
