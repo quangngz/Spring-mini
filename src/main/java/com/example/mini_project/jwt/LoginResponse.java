@@ -5,11 +5,11 @@ import java.util.List;
 public class LoginResponse {
     private String jwtToken;
 
-    private String username;
+    private String userName;
     private List<String> roles;
 
-    public LoginResponse(String username, List<String> roles, String jwtToken) {
-        this.username = username;
+    public LoginResponse(String userName, List<String> roles, String jwtToken) {
+        this.userName = userName;
         this.roles = roles;
         this.jwtToken = jwtToken;
     }
@@ -22,12 +22,12 @@ public class LoginResponse {
         this.jwtToken = jwtToken;
     }
 
-    public String getUsername() {
-        return username;
+    public String getUserName() {
+        return userName;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setUserName(String username) {
+        this.userName = userName;
     }
 
     public List<String> getRoles() {

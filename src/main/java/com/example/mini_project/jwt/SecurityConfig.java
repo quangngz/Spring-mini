@@ -34,7 +34,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
     @Autowired
-    DataSource dataSource;
+    CustomUserDetailsService customUserDetailsService;
 
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
@@ -60,16 +60,12 @@ public class SecurityConfig {
         );
         http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
         //http.httpBasic(withDefaults());
-        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+        http.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
         http.addFilterBefore(authenticationJwtTokenFilter(),
                 UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
-    @Bean
-    public UserDetailsService userDetailsService(DataSource dataSource) {
-        return new JdbcUserDetailsManager(dataSource);
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder(){

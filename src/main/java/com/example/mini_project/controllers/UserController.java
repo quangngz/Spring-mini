@@ -32,6 +32,7 @@ public class UserController {
     public Iterable<User> getUsers() {
         return userRepository.findAll();
     }
+
     @GetMapping("/search")
     public List<User> searchPeople(
             @RequestParam(name="firstName", required = false) String firstName,
@@ -56,28 +57,15 @@ public class UserController {
         return userRepository.findById(id);
     }
 
-//    @PostMapping("/")
-//    public User createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
-//        if (bindingResult.hasErrors()) {
-//            throw new BindException(bindingResult);
-//        }
-//        return userRepository.save(user);
-//    }
-
-    @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
-        if (userRepository.findByUserName(user.getUserName()).isPresent()) {
-            return ResponseEntity.badRequest().body("Username already exists");
+    @PostMapping("/")
+    public User createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
+        if (bindingResult.hasErrors()) {
+            throw new BindException(bindingResult);
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-        if (user.getRole() == null) {
-            user.setRole("ROLE_USER");
-        }
-
-        User savedUser = userRepository.save(user);
-        return ResponseEntity.ok(savedUser);
+        return userRepository.save(user);
     }
+
+
 
     @PutMapping("/{id}")
     public User updateUser(@PathVariable("id") Integer id, @RequestBody @Validated User user,
