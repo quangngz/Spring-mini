@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -23,8 +24,6 @@ import java.util.Optional;
 public class UserController {
     private final UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
     public UserController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
@@ -69,18 +68,15 @@ public class UserController {
 
     @PutMapping("/{id}")
     public User updateUser(@PathVariable("id") Integer id, @RequestBody @Validated User user,
-                           BindException bindException) throws BindException{
-        if (bindException.hasErrors()) {
-            throw new BindException(bindException);
+                           BindingResult bindingResult) throws BindException{
+        if (bindingResult.hasErrors()) {
+            throw new BindException(bindingResult);
         }
-
         Optional<User> userOptional = userRepository.findById(id);
-
         if (userOptional.isEmpty()) return null;
-
         User updatedUser = userOptional.get();
         if (user.getUserName() != null) {
-            updatedUser.setuserName(user.getUserName());
+            updatedUser.setUserName(user.getUserName());
         }
         if (user.getAddress() != null) {
             updatedUser.setAddress(user.getAddress());
@@ -97,11 +93,10 @@ public class UserController {
         if (user.getPhoneNum() != null) {
             updatedUser.setPhoneNum(user.getPhoneNum());
         }
-        if (user.getId() != null) {
-            updatedUser.setId(user.getId());
+        if (user.getRole() != null) {
+            updatedUser.setRole(normalizeRole(user.getRole()));
         }
-        userRepository.save(updatedUser);
-        return updatedUser;
+        return userRepository.save(updatedUser);
     }
     @DeleteMapping("/{id}")
     public User deleteUser(@PathVariable("id") Integer id) throws UserIdNotFoundException{
@@ -120,6 +115,12 @@ public class UserController {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .toList();
         throw new IllegalArgumentException("Vi phạm yêu cầu của Database tại: "  + errors);
+    }
+    private String normalizeRole(String requestedRole) {
+        String role = StringUtils.hasText(requestedRole)
+                ? requestedRole.trim().toUpperCase()
+                : "ROLE_USER";
+        return role.startsWith("ROLE_") ? role : "ROLE_" + role;
     }
 
 
