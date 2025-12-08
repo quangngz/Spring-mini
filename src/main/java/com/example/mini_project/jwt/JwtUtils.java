@@ -25,47 +25,35 @@ public class JwtUtils {
     private int jwtExpirationMs;
 
 
-    /**
-     * Lấy JWT từ header
-     */
+
     public String getJwtFromHeader(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         logger.debug("Authorization Header: {}", bearerToken);
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // Remove Bearer prefix
+            return bearerToken.substring(7);
         }
         return null;
     }
-    /**
-     * Lấy userName rồi tạo token.
-     */
     public String generateTokenFromUsername(UserDetails userDetails) {
         String username = userDetails.getUsername();
         return Jwts.builder()
-                .subject(username) // gộp cái username
-                .issuedAt(new Date()) // gộp thời gian được tạo
-                .expiration(new Date((new Date()).getTime() + jwtExpirationMs)) // gộp khoảng thời gian cái token này sẽ valid trong bao lâu
-                .signWith(key()) // custom method
-                .compact(); // build JWT và compact nó theo 1 standard nhất định
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .signWith(key())
+                .compact();
     }
-    /*
-     * Method để lấy userName từ token
-     */
     public String getUserNameFromJwtToken(String token) {
         return Jwts.parser()
                 .verifyWith((SecretKey) key())
                 .build().parseSignedClaims(token)
                 .getPayload().getSubject();
     }
-    /*
-     * Method để tạo key
-     */
+
     private Key key() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
-    /*
-     * Method để validate token
-     */
+
     public boolean validateJwtToken(String authToken) {
         try {
             System.out.println("Validate");

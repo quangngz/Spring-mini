@@ -57,8 +57,8 @@ public class SecurityConfig {
                 session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS)
-        ); // đánh dấu session là stateless, phù hợp với các restAPI nào không cần lưu trữ session hoặc là khi dùng JWt thì nó cũng phải là Stateless
-        http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler)); // handler khi lỗi
+        );
+        http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
         //http.httpBasic(withDefaults());
         http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
         http.addFilterBefore(authenticationJwtTokenFilter(),
@@ -66,32 +66,10 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Tạo ra Bean
     @Bean
     public UserDetailsService userDetailsService(DataSource dataSource) {
         return new JdbcUserDetailsManager(dataSource);
     }
-
-//
-//    @Bean
-//    public CommandLineRunner initData(UserDetailsService userDetailsService) {
-//        return args -> {
-//            JdbcUserDetailsManager manager = (JdbcUserDetailsManager) userDetailsService;
-//            UserDetails user1 = User.withUsername("user1")
-//                    .password(passwordEncoder().encode("password1"))
-//                    .roles("USER")
-//                    .build();
-//            UserDetails admin = User.withUsername("admin")
-//                    //.password(passwordEncoder().encode("adminPass"))
-//                    .password(passwordEncoder().encode("adminPass"))
-//                    .roles("ADMIN")
-//                    .build();
-//
-//            JdbcUserDetailsManager userDetailsManager = new JdbcUserDetailsManager(dataSource);
-//            userDetailsManager.createUser(user1);
-//            userDetailsManager.createUser(admin);
-//        };
-//    }
 
     @Bean
     public PasswordEncoder passwordEncoder(){

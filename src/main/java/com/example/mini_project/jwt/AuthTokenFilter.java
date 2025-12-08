@@ -28,13 +28,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private UserDetailsService userDetailsService;
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String path = request.getRequestURI();
-        return path.startsWith("/users/register")
-                || path.startsWith("/auth/login")
-                || path.startsWith("/users/h2-console");
-    }
-    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         logger.debug("AuthTokenFilter called for URI: {}", request.getRequestURI());
