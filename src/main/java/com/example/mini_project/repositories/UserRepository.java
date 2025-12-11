@@ -10,18 +10,20 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends CrudRepository<User, Integer> {
-    // Tính tuổi trên ngày sinh chỉ sử dụng được cho H2
-    Optional<User> findByUserName(String userName);
-
+    Optional<User> findByUsername(String username);
+    Boolean existsByUsername(String username);
+    Optional<User> findById(Long id);
     @Query("SELECT u FROM User u WHERE " +
-            "(:firstName IS NULL OR u.firstName = :firstName) AND " +
-            "(:lastName IS NULL OR u.lastName = :lastName) AND " +
+            "(:username IS NULL OR u.username = :firstname) AND " +
+            "(:firstname IS NULL OR u.firstname = :firstname) AND " +
+            "(:lastname IS NULL OR u.lastname = :lastname) AND " +
             "(:address IS NULL OR u.address = :address) AND " +
             "(:phoneNum IS NULL OR u.phoneNum = :phoneNum) AND " +
             "((:start IS NULL AND :end IS NULL) OR u.dob BETWEEN :start AND :end) AND " +
-            "(:cityName IS NUlL OR u.address LIKE %:cityName%)" )
-    List<User> searchByCustom(@Param("firstName") String firstName, @Param("lastName") String lastName,
+            "(:cityname IS NUlL OR u.address LIKE %:cityname%)" )
+    List<User> searchByCustom(@Param("username") String username,
+            @Param("firstname") String firstname, @Param("lastname") String lastname,
                               @Param("address") String address, @Param("phoneNum") String phoneNum,
-                              @Param("cityName") String cityName,
+                              @Param("cityname") String cityname,
                               @Param("start") LocalDate start, @Param("end") LocalDate end);
 }

@@ -12,12 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
-@Slf4j // tự động tạo logger cho class
+@Slf4j
 public class JwtUtil {
-    @Value("${security.jwt.secret-key}")
+    @Value("${spring.app.jwtSecret}")
     private String jwtSecret;
 
-    @Value("${security.jwt.expiration-time}")
+    @Value("${spring.app.jwtExpirationMs}")
     private Integer jwtExpirationMs;
 
     private SecretKey key;

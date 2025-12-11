@@ -1,20 +1,25 @@
 package com.example.mini_project.entities;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDate;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name="users")
 public class User {
     @Id
@@ -23,15 +28,15 @@ public class User {
 
     @NotNull
     @Column(name="USER_NAME", unique = true)
-    private String userName;
+    private String username;
 
     @NotNull
     @Column(name="FIRST_NAME")
-    private String firstName;
+    private String firstname;
 
     @NotNull
     @Column(name="LAST_NAME")
-    private String lastName;
+    private String lastname;
 
     @NotNull
     @Size(min=10, max=10)
@@ -48,78 +53,33 @@ public class User {
     private LocalDate dob;
 
     @Column(name="ROLE")
-    private String role;
+    private Set<String> role = new HashSet<>();
 
     @NotNull
     @Column(name="PASSWORD")
     private String password;
-    public Long getId() {
-        return id;
-    }
-    public String getFirstName() {
-        return firstName;
-    }
-    public String getLastName() {
-        return lastName;
+
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (role == null || role.isEmpty()) {
+            role = new HashSet<>();
+            role.add("ROLE_USER"); // your default
+        }
+        return role.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toSet());
     }
 
-    public String getPhoneNum() {
-        return phoneNum;
+    /**
+     * Nếu muôn add Role từ get thì phải map từ GrantedAuthority qua String
+     * @param insertRole
+     */
+    public void addRole(String insertRole) {
+        if (insertRole == null || insertRole.isBlank()) return;
+        if (role == null) role = new HashSet<>();
+        if (!insertRole.startsWith("ROLE_")) {
+            insertRole = "ROLE_" + insertRole.toUpperCase();
+        }
+        role.add(insertRole);
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public String getUserName() {
-        return userName;
-    }
-
-    public LocalDate getDob() {
-        return dob;
-    }
-
-
-    public String getPassword() {
-        return password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public void setPhoneNum(String phoneNum) {
-        this.phoneNum = phoneNum;
-    }
-    public void setDob(LocalDate dob) {
-        this.dob = dob;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
 }

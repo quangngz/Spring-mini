@@ -1,6 +1,6 @@
 package com.example.mini_project.security;
 
-import com.example.security_practice.service.CustomUserDetailService;
+import com.example.mini_project.service.CustomUserDetailService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +28,8 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     private CustomUserDetailService userDetailService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = parseJwt(request);
             if (jwt != null && jwtUtil.validateJwtToken(jwt)) {
@@ -40,6 +41,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                 null,
                                 userDetails.getAuthorities()
                         );
+                // Ở đây là code sẽ gán dữ liệu cho Authentication object.
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource()
                         .buildDetails(request));
                 SecurityContextHolder.getContext()

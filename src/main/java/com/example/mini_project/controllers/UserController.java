@@ -1,14 +1,15 @@
 package com.example.mini_project.controllers;
+import com.example.mini_project.entities.ResponseDTO;
 import com.example.mini_project.entities.User;
-import com.example.mini_project.exception.UserIdNotFoundException;
 import com.example.mini_project.repositories.UserRepository;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -18,28 +19,32 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-
+@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
     private final UserRepository userRepository;
+    private PasswordEncoder encoder;
 
     public UserController(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+
     @GetMapping()
     public Iterable<User> getUsers() {
         return userRepository.findAll();
     }
 
+
     @GetMapping("/search")
     public List<User> searchPeople(
-            @RequestParam(name="firstName", required = false) String firstName,
-            @RequestParam(name="lastName", required = false) String lastName,
+            @RequestParam(name="username", required = false) String username,
+            @RequestParam(name="firstname", required = false) String firstname,
+            @RequestParam(name="lastname", required = false) String lastname,
             @RequestParam(name="phoneNum", required = false) String phoneNum,
             @RequestParam(name="address", required = false) String address,
             @RequestParam(name="age", required = false) Integer age,
-            @RequestParam(name="city", required = false) String cityName
+            @RequestParam(name="city", required = false) String cityname
     ) {
         LocalDate begin = null;
         LocalDate end = null;
@@ -47,36 +52,55 @@ public class UserController {
             begin = LocalDate.now().minusYears(age + 1).plusDays(1);
             end = LocalDate.now().minusYears(age);
         }
-        return userRepository.searchByCustom(firstName, lastName, address, phoneNum, cityName, begin, end);
+        return userRepository.searchByCustom(username, firstname, lastname, address, phoneNum, cityname, begin, end);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Cacheable(value="users", key="#id")
     @GetMapping("/{id}")
-    public Optional<User> getUserById(@PathVariable("id") Integer id) {
+    public Optional<User> getUserById(@PathVariable("id") Long id) {
         return userRepository.findById(id);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/")
-    public User createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
+    public String createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
-        return userRepository.save(user);
+        userRepository.save(user);
+        return "Khởi tạo user thành công!";
     }
 
-
-
+    /**
+     * Chỉ thay đổi được nếu là admin or là chủ sở hữu thông tin
+     */
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable("id") Integer id, @RequestBody @Validated User user,
-                           BindingResult bindingResult) throws BindException{
-        if (bindingResult.hasErrors()) {
-            throw new BindException(bindingResult);
+    public ResponseEntity<ResponseDTO<User>> updateUser(@PathVariable("id") Long id, @RequestBody User user,
+                                                        Authentication auth) {
+        if (!isOwnerOrAdmin(auth, id)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseDTO<>("Bạn chỉ có thể edit thông tin của bạn!", null));
         }
         Optional<User> userOptional = userRepository.findById(id);
-        if (userOptional.isEmpty()) return null;
+        if (userOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDTO<>("Không có gì để update", null));
+
+        User updatedUser = getUser(user, userOptional);
+        if (user.getPassword() != null) {
+            encoder.encode(user.getPassword());
+        }
+        if (!user.getAuthorities().isEmpty()) {
+            user.getAuthorities().forEach(a -> updatedUser.addRole(a.getAuthority()));
+        }
+        userRepository.save(updatedUser);
+        return ResponseEntity.ok(new ResponseDTO<>("thay đổi thông tin thành công!", updatedUser));
+    }
+    // Helper method
+    private User getUser(User user, Optional<User> userOptional) {
         User updatedUser = userOptional.get();
-        if (user.getUserName() != null) {
-            updatedUser.setUserName(user.getUserName());
+        if (user.getUsername() != null) {
+            updatedUser.setUsername(user.getUsername());
         }
         if (user.getAddress() != null) {
             updatedUser.setAddress(user.getAddress());
@@ -84,27 +108,47 @@ public class UserController {
         if (user.getDob() != null) {
             updatedUser.setDob(user.getDob());
         }
-        if (user.getFirstName() != null) {
-            updatedUser.setFirstName(user.getFirstName());
+        if (user.getFirstname() != null) {
+            updatedUser.setFirstname(user.getFirstname());
         }
-        if (user.getLastName() != null) {
-            updatedUser.setLastName(user.getLastName());
+        if (user.getLastname() != null) {
+            updatedUser.setLastname(user.getLastname());
         }
         if (user.getPhoneNum() != null) {
             updatedUser.setPhoneNum(user.getPhoneNum());
         }
-        if (user.getRole() != null) {
-            updatedUser.setRole(normalizeRole(user.getRole()));
-        }
-        return userRepository.save(updatedUser);
+        return updatedUser;
     }
+    // Helper method
+    private boolean isOwnerOrAdmin(Authentication auth, Long currentID) {
+        boolean isAdmin =  auth.getAuthorities().stream()
+                .anyMatch(a->a.getAuthority().equals("ROLE_ADMIN"));
+        Optional<User> userOptional = userRepository.findById(currentID);
+        // Nếu có store userID ở trong authentication thì sẽ hiệu quả hơn.
+        if (userOptional.isEmpty()) return isAdmin;
+        User user = userOptional.get();
+        Object principal = auth.getPrincipal();
+        boolean isOwner = false;
+        if (principal instanceof UserDetails userDetails) {
+            isOwner = user.getUsername().equals(userDetails.getUsername());
+        }
+        if (principal instanceof String p) {
+            isOwner = user.getUsername().equals(p);
+        }
+        if (isOwner) log.info("User là chủ sở hữu");
+        else log.info("User không phải chủ sở hữu");
+        return isAdmin || isOwner;
+    }
+
     @DeleteMapping("/{id}")
-    public User deleteUser(@PathVariable("id") Integer id) throws UserIdNotFoundException{
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseDTO<User>> deleteUser(@PathVariable("id") Long id, Authentication auth){
         Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) throw new UserIdNotFoundException("User Id không tồn tại để xóa");
-        User deletedUser = optionalUser.get();
-        userRepository.delete(deletedUser);
-        return deletedUser;
+        if (optionalUser.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDTO<>("User Id không tồn tại để xóa", null));
+        User user = optionalUser.get();
+        userRepository.delete(user);
+        return ResponseEntity.ok(new ResponseDTO<>("Xóa thành công user", user));
     }
 
     @ExceptionHandler(BindException.class)
@@ -115,12 +159,6 @@ public class UserController {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .toList();
         throw new IllegalArgumentException("Vi phạm yêu cầu của Database tại: "  + errors);
-    }
-    private String normalizeRole(String requestedRole) {
-        String role = StringUtils.hasText(requestedRole)
-                ? requestedRole.trim().toUpperCase()
-                : "ROLE_USER";
-        return role.startsWith("ROLE_") ? role : "ROLE_" + role;
     }
 
 
