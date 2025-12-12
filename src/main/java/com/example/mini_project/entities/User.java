@@ -60,11 +60,12 @@ public class User {
     private String password;
 
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (role == null || role.isEmpty()) {
-            role = new HashSet<>();
-            role.add("ROLE_USER"); // your default
-        }
-        return role.stream()
+        Set<String> effectiveRoles = (role == null || role.isEmpty())
+                ? Set.of("ROLE_USER")
+                : role.stream()
+                      .map(this::normalizeRole)
+                      .collect(Collectors.toSet());
+        return effectiveRoles.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
     }
@@ -76,10 +77,11 @@ public class User {
     public void addRole(String insertRole) {
         if (insertRole == null || insertRole.isBlank()) return;
         if (role == null) role = new HashSet<>();
-        if (!insertRole.startsWith("ROLE_")) {
-            insertRole = "ROLE_" + insertRole.toUpperCase();
-        }
-        role.add(insertRole);
+        role.add(normalizeRole(insertRole));
     }
 
+    private String normalizeRole(String rawRole) {
+        String trimmed = rawRole == null ? "" : rawRole.trim().toUpperCase();
+        return trimmed.startsWith("ROLE_") ? trimmed : "ROLE_" + trimmed;
+    }
 }

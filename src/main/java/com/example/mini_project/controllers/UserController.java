@@ -24,20 +24,22 @@ import java.util.Optional;
 @RequestMapping("/users")
 public class UserController {
     private final UserRepository userRepository;
-    private PasswordEncoder encoder;
+    private final PasswordEncoder encoder;
 
-    public UserController(UserRepository userRepository) {
+    public UserController(UserRepository userRepository, PasswordEncoder encoder) {
         this.userRepository = userRepository;
+        this.encoder = encoder;
     }
 
     @GetMapping()
-    public Iterable<User> getUsers() {
-        return userRepository.findAll();
+    public ResponseEntity<ResponseDTO<Iterable<User>>> getUsers() {
+        Iterable<User> users = userRepository.findAll();
+        return buildResponse(HttpStatus.OK, "Lấy dữ liệu thành công", users);
     }
 
 
     @GetMapping("/search")
-    public List<User> searchPeople(
+    public ResponseEntity<ResponseDTO<List<User>>> searchPeople(
             @RequestParam(name="username", required = false) String username,
             @RequestParam(name="firstname", required = false) String firstname,
             @RequestParam(name="lastname", required = false) String lastname,
@@ -52,24 +54,28 @@ public class UserController {
             begin = LocalDate.now().minusYears(age + 1).plusDays(1);
             end = LocalDate.now().minusYears(age);
         }
-        return userRepository.searchByCustom(username, firstname, lastname, address, phoneNum, cityname, begin, end);
+        List<User> results = userRepository.searchByCustom(username, firstname, lastname, address, phoneNum, cityname, begin, end);
+        return buildResponse(HttpStatus.OK, "Tìm kiếm thành công!", results);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Cacheable(value="users", key="#id")
     @GetMapping("/{id}")
-    public Optional<User> getUserById(@PathVariable("id") Long id) {
-        return userRepository.findById(id);
+    public ResponseEntity<ResponseDTO<User>> getUserById(@PathVariable("id") Long id) {
+        return userRepository.findById(id)
+                .map(user -> buildResponse(HttpStatus.OK, "User fetched successfully", user))
+                .orElseGet(() -> buildResponse(HttpStatus.NOT_FOUND, "User not found", null));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/")
-    public String createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
+    public ResponseEntity<ResponseDTO<User>> createNewUser(@RequestBody @Validated User user, BindingResult bindingResult) throws BindException{
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
-        userRepository.save(user);
-        return "Khởi tạo user thành công!";
+        user.setPassword(encoder.encode(user.getPassword()));
+        User saved = userRepository.save(user);
+        return buildResponse(HttpStatus.CREATED, "User created successfully", saved);
     }
 
     /**
@@ -79,22 +85,21 @@ public class UserController {
     public ResponseEntity<ResponseDTO<User>> updateUser(@PathVariable("id") Long id, @RequestBody User user,
                                                         Authentication auth) {
         if (!isOwnerOrAdmin(auth, id)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseDTO<>("Bạn chỉ có thể edit thông tin của bạn!", null));
+            return buildResponse(HttpStatus.BAD_REQUEST, "Bạn chỉ có thể edit thông tin của bạn!", null);
         }
         Optional<User> userOptional = userRepository.findById(id);
-        if (userOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDTO<>("Không có gì để update", null));
-
+        if (userOptional.isEmpty()) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "Không có gì để update", null);
+        }
         User updatedUser = getUser(user, userOptional);
         if (user.getPassword() != null) {
-            encoder.encode(user.getPassword());
+            updatedUser.setPassword(encoder.encode(user.getPassword()));
         }
         if (!user.getAuthorities().isEmpty()) {
             user.getAuthorities().forEach(a -> updatedUser.addRole(a.getAuthority()));
         }
         userRepository.save(updatedUser);
-        return ResponseEntity.ok(new ResponseDTO<>("thay đổi thông tin thành công!", updatedUser));
+        return buildResponse(HttpStatus.OK, "Thay đổi thông tin thành công!", updatedUser);
     }
     // Helper method
     private User getUser(User user, Optional<User> userOptional) {
@@ -144,11 +149,12 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ResponseDTO<User>> deleteUser(@PathVariable("id") Long id, Authentication auth){
         Optional<User> optionalUser = userRepository.findById(id);
-        if (optionalUser.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDTO<>("User Id không tồn tại để xóa", null));
+        if (optionalUser.isEmpty()) {
+            return buildResponse(HttpStatus.BAD_REQUEST, "User Id không tồn tại để xóa", null);
+        }
         User user = optionalUser.get();
         userRepository.delete(user);
-        return ResponseEntity.ok(new ResponseDTO<>("Xóa thành công user", user));
+        return buildResponse(HttpStatus.OK, "Xóa thành công user", user);
     }
 
     @ExceptionHandler(BindException.class)
@@ -161,5 +167,7 @@ public class UserController {
         throw new IllegalArgumentException("Vi phạm yêu cầu của Database tại: "  + errors);
     }
 
-
+    private <T> ResponseEntity<ResponseDTO<T>> buildResponse(HttpStatus status, String message, T data) {
+        return ResponseEntity.status(status).body(new ResponseDTO<>(message, data));
+    }
 }
