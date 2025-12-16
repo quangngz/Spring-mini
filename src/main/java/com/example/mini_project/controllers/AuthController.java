@@ -1,12 +1,17 @@
 package com.example.mini_project.controllers;
 
+import com.example.mini_project.entities.ResponseDTO;
 import com.example.mini_project.entities.User;
 import com.example.mini_project.repositories.UserRepository;
 import com.example.mini_project.security.JwtUtil;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +22,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -43,6 +49,8 @@ public class AuthController {
 
     @PostMapping("/signin")
     public String authentication(@RequestBody SigninRequest req) {
+        log.info(req.getUsername());
+        log.info(req.getPassword());
         Authentication authentication = authenticationManager.authenticate(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                         req.getUsername(),
@@ -56,14 +64,23 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public String registerUser(@RequestBody @Validated User user,
-                               BindingResult bindingResult) throws BindException{
+    public ResponseEntity<ResponseDTO<Void>> registerUser(@RequestBody @Validated User user,
+                                                          BindingResult bindingResult){
         if (bindingResult.hasErrors()) {
-            throw new BindException(bindingResult);
+            String message = bindingResult.getFieldErrors()
+                    .stream()
+                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                    .collect(Collectors.joining("; "));
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseDTO<>(message, null));
         }
         if (userRepository.existsByUsername(user.getUsername())) {
-            return "User đã tồn tại!";
+            return ResponseEntity.ok(new ResponseDTO<>("User đã tồn tại!", null)) ;
         }
+        log.info(user.getUsername());
+        log.info(user.getLastname());
+        log.info(user.getFirstname());
 
         if (user.getPassword() != null) {
             user.setPassword(encoder.encode(user.getPassword()));
@@ -73,7 +90,7 @@ public class AuthController {
         }
 
         userRepository.save(user);
-        return "User đăng ký tài khoản thành công!";
+        return ResponseEntity.ok(new ResponseDTO<>("User đăng ký tài khoản thành công!", null)) ;
     }
 }
 

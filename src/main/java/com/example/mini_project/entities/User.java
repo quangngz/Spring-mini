@@ -80,8 +80,14 @@ public class User {
         role.add(normalizeRole(insertRole));
     }
 
+    /**
+     * Helper function giúp quản lí role về 1 format
+     * @param rawRole
+     * @return
+     */
     private String normalizeRole(String rawRole) {
         String trimmed = rawRole == null ? "" : rawRole.trim().toUpperCase();
         return trimmed.startsWith("ROLE_") ? trimmed : "ROLE_" + trimmed;
     }
 }
+
