@@ -27,23 +27,22 @@ public class User {
     private Long id;
 
     @NotNull
-    @Column(name="USER_NAME", unique = true)
+    @Column(name="USERNAME", unique = true)
     private String username;
 
     @NotNull
+    @Column(name="PASSWORD")
+    private String password;
+
     @Column(name="FIRST_NAME")
     private String firstname;
 
-    @NotNull
     @Column(name="LAST_NAME")
     private String lastname;
 
-    @NotNull
-    @Size(min=10, max=10)
     @Column(name="PHONE_NUM")
     private String phoneNum;
 
-    @NotNull
     @Column(name="ADDRESS")
     private String address;
 
@@ -55,9 +54,6 @@ public class User {
     @Column(name="ROLE")
     private Set<String> role = new HashSet<>();
 
-    @NotNull
-    @Column(name="PASSWORD")
-    private String password;
 
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Set<String> effectiveRoles = (role == null || role.isEmpty())

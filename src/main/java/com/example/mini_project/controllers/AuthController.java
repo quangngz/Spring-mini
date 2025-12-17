@@ -48,9 +48,7 @@ public class AuthController {
     }
 
     @PostMapping("/signin")
-    public String authentication(@RequestBody SigninRequest req) {
-        log.info(req.getUsername());
-        log.info(req.getPassword());
+    public ResponseEntity<ResponseDTO<String>> authentication(@RequestBody SigninRequest req) {
         Authentication authentication = authenticationManager.authenticate(
                 new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                         req.getUsername(),
@@ -59,8 +57,8 @@ public class AuthController {
         );
 
         final UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-        return jwtUtil.generateToken(userDetails.getUsername());
+        String token = jwtUtil.generateToken(userDetails.getUsername());
+        return ResponseEntity.ok(new ResponseDTO<>("User đăng nhập thành công", token));
     }
 
     @PostMapping("/signup")
@@ -78,9 +76,6 @@ public class AuthController {
         if (userRepository.existsByUsername(user.getUsername())) {
             return ResponseEntity.ok(new ResponseDTO<>("User đã tồn tại!", null)) ;
         }
-        log.info(user.getUsername());
-        log.info(user.getLastname());
-        log.info(user.getFirstname());
 
         if (user.getPassword() != null) {
             user.setPassword(encoder.encode(user.getPassword()));
