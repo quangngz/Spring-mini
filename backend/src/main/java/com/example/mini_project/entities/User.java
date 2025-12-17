@@ -55,6 +55,9 @@ public class User {
     private Set<String> role = new HashSet<>();
 
 
+    @OneToMany(mappedBy = "user")
+    private Set<UserCourse> courses = new HashSet<>();
+
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Set<String> effectiveRoles = (role == null || role.isEmpty())
                 ? Set.of("ROLE_USER")

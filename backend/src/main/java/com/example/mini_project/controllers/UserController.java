@@ -60,7 +60,6 @@ public class UserController {
         return buildResponse(HttpStatus.OK, "Tìm kiếm thành công!", results);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{username}")
     public ResponseEntity<ResponseDTO<User>> getByUsername(@PathVariable("username") String username) {
         return userRepository.findByUsername(username)
