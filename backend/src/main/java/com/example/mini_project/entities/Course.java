@@ -33,9 +33,19 @@ public class Course {
     // Store user_id của người tạo ra course
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="created_user_id", nullable = false)
-    private Long created_user_id;
+    private User createdBy;
 
-    @OneToMany(mappedBy="course")
+    @OneToMany(mappedBy="course", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<UserCourse> students = new HashSet<>();
 
+
+    public void addStudent(UserCourse userCourse) {
+        this.students.add(userCourse);
+        userCourse.setCourse(this);
+    }
+
+    public void removeStudent(UserCourse userCourse) {
+        this.students.remove(userCourse);
+        userCourse.setCourse(null);
+    }
 }
