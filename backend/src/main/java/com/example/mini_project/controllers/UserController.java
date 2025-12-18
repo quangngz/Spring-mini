@@ -69,15 +69,11 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create")
-    public ResponseEntity<ResponseDTO<User>> createNewUser(@RequestBody @Validated User user, BindingResult bindingResult){
+    public ResponseEntity<ResponseDTO<User>> createNewUser(@RequestBody @Validated User user, BindingResult bindingResult)
+    throws  BindException{
         if (bindingResult.hasErrors()) {
-            String message = bindingResult.getFieldErrors()
-                    .stream()
-                    .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                    .collect(Collectors.joining("; "));
-
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ResponseDTO<>(message, null));        }
+            throw new BindException(bindingResult);
+     }
         user.setPassword(encoder.encode(user.getPassword()));
         User saved = userRepository.save(user);
         return buildResponse(HttpStatus.CREATED, "User created successfully", saved);

@@ -1,8 +1,10 @@
-package com.example.mini_project.entities;
+package com.example.mini_project.entities.usercourse;
 
+import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.course.Course;
+import com.example.mini_project.entities.course.CourseRole;
 import jakarta.persistence.*;
 
-import java.io.Serializable;
 import java.time.LocalDate;
 
 import lombok.AllArgsConstructor;
@@ -35,9 +37,10 @@ public class UserCourse {
     private Course course;
 
     @Column(name="enrolled_date")
-    private LocalDate enrolledDate;
+    private LocalDate  enrolledDate;
 
     @Column(name="role")
-    private String role;
+    @Enumerated(EnumType.STRING)
+    private CourseRole role;
 }
 

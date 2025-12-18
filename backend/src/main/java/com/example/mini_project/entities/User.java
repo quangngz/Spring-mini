@@ -1,9 +1,8 @@
 package com.example.mini_project.entities;
+import com.example.mini_project.entities.usercourse.UserCourse;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -53,7 +52,12 @@ public class User {
     @Column(name="DOB")
     private LocalDate dob;
 
-    @Column(name="ROLE")
+    // Map roles properly as a collection of strings
+    // EAGER is preferred here because roles are needed when building authorities
+    // during authentication, which often happens outside of an open JPA session.
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
     private Set<String> role = new HashSet<>();
 
 
