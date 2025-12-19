@@ -46,7 +46,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                         .buildDetails(request));
                 SecurityContextHolder.getContext()
                         .setAuthentication(authenticationToken);
-
+            } else {
+                if (jwt == null) {
+                    log.debug("JWT absent for request: {} {}", request.getMethod(), request.getRequestURI());
+                } else {
+                    log.warn("JWT present but invalid for request: {} {}", request.getMethod(), request.getRequestURI());
+                }
             }
         } catch(Exception e) {
             log.error("Cannot set user authentication: {}", e);
@@ -56,8 +61,8 @@ public class AuthTokenFilter extends OncePerRequestFilter {
 
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
-        if (headerAuth != null && headerAuth.startsWith("Bearer")) {
-            return headerAuth.substring(7);
+        if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
+            return headerAuth.substring(7).trim();
         }
         return null;
     }

@@ -75,6 +75,13 @@ public class UserController {
             throw new BindException(bindingResult);
      }
         user.setPassword(encoder.encode(user.getPassword()));
+        if (user.getRole() == null || user.getRole().isEmpty()) {
+            user.setRole(
+                    user.getAuthorities().stream()
+                            .map(grantedAuthority -> grantedAuthority.getAuthority())
+                            .collect(Collectors.toSet())
+            );
+        }
         User saved = userRepository.save(user);
         return buildResponse(HttpStatus.CREATED, "User created successfully", saved);
     }

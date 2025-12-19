@@ -29,10 +29,8 @@ public class WebSecurityConfig {
     @Autowired
     private AuthEntryPoint unauthorizedHandler;
 
-    @Bean
-    public AuthTokenFilter authenticationJwtTokenFilter() {
-        return new AuthTokenFilter();
-    }
+    @Autowired
+    private AuthTokenFilter authenticationJwtTokenFilter;
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -63,7 +61,7 @@ public class WebSecurityConfig {
                 .headers(headers ->
                         headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 
-        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(authenticationJwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

@@ -3,6 +3,7 @@ package com.example.mini_project.controllers;
 import com.example.mini_project.entities.ResponseDTO;
 import com.example.mini_project.entities.User;
 import com.example.mini_project.entities.course.Course;
+import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.repositories.CourseRepository;
 import com.example.mini_project.repositories.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -33,30 +34,30 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Lấy dữ liệu course thành công", courses));
     }
     
-    @GetMapping("/{coursename}")
-    public ResponseEntity<ResponseDTO<Course>> getCouseByName(@PathVariable("coursename") String courseName) {
-        Optional<Course> courseOptional = courseRepository.findByCourseName(courseName);
+    @GetMapping("/{coursecode}")
+    public ResponseEntity<ResponseDTO<Course>> getCourseByCode(@PathVariable("coursecode") String courseCode) {
+        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO("Không tìm tháy course hợp lệ", null));
         return ResponseEntity.ok(new ResponseDTO("Tìm thấy course thành công!", courseOptional.get()));
     }
 
+
+    @GetMapping("/all-users/{coursecode}")
+    public ResponseEntity<ResponseDTO<List<UserCourse>>> getAllUsersInCourse(@PathVariable("coursecode") String courseCode) {
+        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+        if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDTO<>("Không tìm thấy course hợp lệ", null));
+        Course course = courseOptional.get();
+        List<UserCourse> users = new ArrayList<>();
+        course.getStudents().forEach(userCourse -> users.add(userCourse));// TODO:
+        return ResponseEntity.ok(new ResponseDTO<>("Lấy danh sách user trong course thành công", users));
+    }
+
     @GetMapping("/search")
-    public ResponseEntity<ResponseDTO<List<Course>>> searchCourse(@RequestParam("coursename") String courseName,
+    public ResponseEntity<ResponseDTO<List<Course>>> searchCourse(@RequestParam("q") String keyword,
                                                                   @RequestParam("is-private") Boolean isPrivate) {
-        List<Course> resultList = new ArrayList<>();
-        if (courseName != null) {
-            if (isPrivate != null) {
-                if (isPrivate) resultList = courseRepository.findByIsPrivateTrueAndCourseNameContaining(courseName);
-                else resultList = courseRepository.findByIsPrivateFalseAndCourseNameContaining(courseName);
-            } else {
-                resultList = courseRepository.findByCourseNameContaining(courseName);
-            }
-        }
-        else if (isPrivate != null) {
-            if (isPrivate) resultList = courseRepository.findByIsPrivateTrue();
-            else resultList = courseRepository.findByIsPrivateFalse();
-        }
+        List<Course> resultList = courseRepository.search(keyword, isPrivate);
         if (resultList == null) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Vui lòng tìm kiếm trường phù hợp", null));
         if (resultList.isEmpty()) return ResponseEntity.ok(
@@ -84,7 +85,13 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ResponseDTO<>("Người dùng không hợp lệ", null));
         }
+        if (courseRepository.findByCourseCode(course.getCourseCode()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ResponseDTO<>("Course code đã tồn tại", null));
+        }
+
         User user = userOptional.get();
+        
         course.setCreatedBy(user);
 
         Course addedCourse = courseRepository.save(course);
@@ -92,14 +99,14 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Tạo thành công course mới", addedCourse));
     }
 
-    @PutMapping("/update/{coursename}")
-    public ResponseEntity<ResponseDTO<Course>> updateCourse(@PathVariable("coursename") String courseName,
+    @PutMapping("/update/{coursecode}")
+    public ResponseEntity<ResponseDTO<Course>> updateCourse(@PathVariable("coursecode") String courseCode,
                                                           @RequestBody @Validated Course course,
                                                           BindingResult bindingResult) throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
-        Optional<Course> courseOptional = courseRepository.findByCourseName(courseName);
+        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Không tìm thấy course hợp lệ", null));
         Course existingCourse = courseOptional.get();
@@ -111,10 +118,10 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Cập nhật course thành công", updatedCourse));
     }
 
-    @DeleteMapping("/delete/{coursename}")
-    public ResponseEntity<ResponseDTO<Course>> deleteCourse(@PathVariable("coursename") String courseName,
+    @DeleteMapping("/delete/{coursecode}")
+    public ResponseEntity<ResponseDTO<Course>> deleteCourse(@PathVariable("coursecode") String courseCode,
                                                             Authentication auth) {
-        Optional<Course> courseOptional = courseRepository.findByCourseName(courseName);
+        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Xóa course: Không tìm thấy course hợp lệ", null));
         Course course = courseOptional.get();
@@ -126,7 +133,7 @@ public class CourseController {
         if (principal instanceof  String s) {
             userCreatedUsername = s;
         }
-        if (userCreatedUsername != course.getCreatedBy().getUsername()) {
+        if (userCreatedUsername == null || !userCreatedUsername.equals(course.getCreatedBy().getUsername())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ResponseDTO<>("Xóa course: Chỉ user tạo ra mới có thể xóa course này", null));
         }

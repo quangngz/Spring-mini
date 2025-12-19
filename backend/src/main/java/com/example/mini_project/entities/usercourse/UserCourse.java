@@ -24,7 +24,7 @@ public class UserCourse {
 
     @EqualsAndHashCode.Include
     @EmbeddedId
-    private UserCourseId userCourseId;
+    private UserCourseId id;
 
     @ManyToOne
     @MapsId("userId")

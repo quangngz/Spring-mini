@@ -1,5 +1,6 @@
 package com.example.mini_project.entities;
 import com.example.mini_project.entities.usercourse.UserCourse;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -62,6 +63,7 @@ public class User {
 
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<UserCourse> courses = new HashSet<>();
 
     public Collection<? extends GrantedAuthority> getAuthorities() {

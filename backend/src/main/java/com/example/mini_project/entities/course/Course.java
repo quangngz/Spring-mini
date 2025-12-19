@@ -3,6 +3,7 @@ package com.example.mini_project.entities.course;
 import com.example.mini_project.entities.User;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.entities.assignment.Assignment;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,10 +42,11 @@ public class Course {
     @JoinColumn(name="created_user_id", nullable = false)
     private User createdBy;
 
-    @OneToMany(mappedBy="course", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy="course", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @JsonIgnore
     private Set<UserCourse> students = new HashSet<>();
 
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "course", cascade = CascadeType.PERSIST, orphanRemoval = true)
     private List<Assignment> assignmentList = new ArrayList<>();
 
 
