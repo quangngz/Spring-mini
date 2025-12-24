@@ -23,15 +23,18 @@ const Dashboard = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCourse, setNewCourse] = useState({
     courseCode: '',
-    name: '',
+    courseName: '',
     isPrivate: false,
     endDate: '',
   });
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<{ courseCode: string; courseName: string; isPrivate: boolean; endDate: string } | null>(null);
 
   const fetchCourses = async () => {
     try {
       const data = await coursesApi.getAll();
-      setCourses(data || []);
+      setCourses(Array.isArray(data) ? data : []);
     } catch (error) {
       toast({
         title: 'Error',
@@ -49,13 +52,13 @@ const Dashboard = () => {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      fetchCourses();
+      await fetchCourses();
       return;
     }
     setIsLoading(true);
     try {
       const data = await coursesApi.search(searchQuery);
-      setCourses(data || []);
+      setCourses(Array.isArray(data) ? data : []);
     } catch {
       toast({
         title: 'Search failed',
@@ -90,10 +93,10 @@ const Dashboard = () => {
       await coursesApi.create(newCourse);
       toast({
         title: 'Course created!',
-        description: `${newCourse.name} has been created`,
+        description: `${newCourse.courseName} has been created`,
       });
       setIsCreateOpen(false);
-      setNewCourse({ courseCode: '', name: '', isPrivate: false, endDate: '' });
+      setNewCourse({ courseCode: '', courseName: '', isPrivate: false, endDate: '' });
       fetchCourses();
     } catch (error: any) {
       toast({
@@ -106,10 +109,53 @@ const Dashboard = () => {
     }
   };
 
-  const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.courseCode.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const openEditCourse = (course: CourseDTO) => {
+    setEditingCourse({
+      courseCode: course.courseCode,
+      courseName: course.courseName,
+      isPrivate: course.isPrivate,
+      endDate: course.endDate || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCourse) return;
+    setIsUpdatingCourse(true);
+    try {
+      await coursesApi.update(editingCourse.courseCode, {
+        courseName: editingCourse.courseName,
+        isPrivate: editingCourse.isPrivate,
+        endDate: editingCourse.endDate || undefined,
+      });
+      toast({ title: 'Course updated', description: editingCourse.courseName });
+      setIsEditOpen(false);
+      setEditingCourse(null);
+      fetchCourses();
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.response?.data?.message || 'Could not update course',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingCourse(false);
+    }
+  };
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredCourses = (Array.isArray(courses) ? courses : []).filter((course) => {
+    if (!normalizedQuery) return true;
+    const name = (course?.courseName ?? '').toString().toLowerCase();
+    const code = (course?.courseCode ?? '').toString().toLowerCase();
+    const createdBy = (course?.createdBy ?? '').toString().toLowerCase();
+    return (
+      name.includes(normalizedQuery) ||
+      code.includes(normalizedQuery) ||
+      createdBy.includes(normalizedQuery)
+    );
+  });
 
   return (
     <MainLayout>
@@ -152,12 +198,12 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="name">Course Name</Label>
+                    <Label htmlFor="courseName">Course Name</Label>
                     <Input
-                      id="name"
+                      id="courseName"
                       placeholder="Introduction to Computer Science"
-                      value={newCourse.name}
-                      onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
+                      value={newCourse.courseName}
+                      onChange={(e) => setNewCourse(prev => ({ ...prev, courseName: e.target.value }))}
                       required
                     />
                   </div>
@@ -259,7 +305,7 @@ const Dashboard = () => {
                     </Badge>
                   </div>
                   <CardTitle className="mt-4 group-hover:text-primary transition-colors">
-                    {course.name}
+                    {course.courseName}
                   </CardTitle>
                   <CardDescription className="flex items-center gap-4">
                     <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
@@ -280,19 +326,84 @@ const Dashboard = () => {
                   )}
                 </CardContent>
                 <CardFooter className="gap-2">
-                  <Link to={`/courses/${course.courseCode}`} className="flex-1">
-                    <Button variant="outline" className="w-full">
-                      View Details
+                  {course.courseCode ? (
+                    <Link to={`/courses/${course.courseCode}`} className="flex-1">
+                      <Button variant="outline" className="w-full">
+                        View Details
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button variant="outline" className="flex-1" disabled>
+                      No Code
                     </Button>
-                  </Link>
-                  <Button onClick={() => handleEnroll(course.courseCode)}>
+                  )}
+                  <Button onClick={() => handleEnroll(course.courseCode)} disabled={!course.courseCode}>
                     Enroll
                   </Button>
+                  {user?.username === course.createdBy && (
+                    <Button variant="secondary" onClick={() => openEditCourse(course)}>
+                      Edit
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             ))}
           </div>
         )}
+        {/* Global Edit Course Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <form onSubmit={handleUpdateCourse}>
+              <DialogHeader>
+                <DialogTitle>Edit Course</DialogTitle>
+                <DialogDescription>Update course details</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editCourseName">Course Name</Label>
+                  <Input
+                    id="editCourseName"
+                    value={editingCourse?.courseName || ''}
+                    onChange={(e) => setEditingCourse(prev => prev ? { ...prev, courseName: e.target.value } : prev)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editEndDate">End Date (Optional)</Label>
+                  <Input
+                    id="editEndDate"
+                    type="date"
+                    value={editingCourse?.endDate || ''}
+                    onChange={(e) => setEditingCourse(prev => prev ? { ...prev, endDate: e.target.value } : prev)}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="editIsPrivate">Private Course</Label>
+                  <Switch
+                    id="editIsPrivate"
+                    checked={editingCourse?.isPrivate || false}
+                    onCheckedChange={(checked) => setEditingCourse(prev => prev ? { ...prev, isPrivate: checked } : prev)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isUpdatingCourse}>
+                  {isUpdatingCourse ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );

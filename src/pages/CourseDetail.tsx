@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { coursesApi, assignmentsApi, enrollmentApi, CourseDTO, Assignment, UserCourse } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,9 +32,29 @@ const CourseDetail = () => {
     assignmentDue: '',
     assignmentWeight: 10,
   });
+  const [isEditAssignmentOpen, setIsEditAssignmentOpen] = useState(false);
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<{
+    id: number;
+    assignmentName: string;
+    assignmentDue: string;
+    assignmentWeight: number;
+  } | null>(null);
+
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
+  const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
+  const [editCourse, setEditCourse] = useState<{ courseName: string; isPrivate: boolean; endDate?: string } | null>(null);
 
   useEffect(() => {
-    if (!courseCode) return;
+    if (!courseCode) {
+      toast({
+        title: 'Invalid course URL',
+        description: 'No course code provided in URL',
+        variant: 'destructive',
+      });
+      navigate('/dashboard');
+      return;
+    }
     
     const fetchData = async () => {
       try {
@@ -42,6 +63,8 @@ const CourseDetail = () => {
           assignmentsApi.getAll(courseCode),
           coursesApi.getEnrollments(courseCode),
         ]);
+        // Debug: track fetched payloads (assignments only)
+        console.log('Debug: assignmentsData (fetched)', assignmentsData);
         setCourse(courseData);
         setAssignments(assignmentsData || []);
         setEnrollments(enrollmentsData || []);
@@ -59,6 +82,11 @@ const CourseDetail = () => {
     fetchData();
   }, [courseCode]);
 
+  // Log assignments whenever they change
+  useEffect(() => {
+    console.log('Debug: assignments state updated', assignments);
+  }, [assignments]);
+
   const isCreator = user?.username === course?.createdBy;
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
@@ -68,7 +96,10 @@ const CourseDetail = () => {
     setIsCreatingAssignment(true);
     try {
       const created = await assignmentsApi.create(courseCode, newAssignment);
-      setAssignments(prev => [...prev, created]);
+      console.log('Debug: assignment created', created);
+      // Re-fetch assignments to verify persistence in DB
+      const freshAssignments = await assignmentsApi.getAll(courseCode);
+      setAssignments(freshAssignments || []);
       toast({
         title: 'Assignment created!',
         description: `${newAssignment.assignmentName} has been added`,
@@ -83,6 +114,84 @@ const CourseDetail = () => {
       });
     } finally {
       setIsCreatingAssignment(false);
+    }
+  };
+
+  const openEditAssignment = (assignment: Assignment) => {
+    setEditingAssignment({
+      id: assignment.id,
+      assignmentName: assignment.assignmentName,
+      assignmentDue: assignment.assignmentDue,
+      assignmentWeight: assignment.assignmentWeight,
+    });
+    setIsEditAssignmentOpen(true);
+  };
+
+  const handleUpdateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseCode || !editingAssignment) return;
+    setIsUpdatingAssignment(true);
+    try {
+      const updated = await assignmentsApi.update(courseCode, editingAssignment);
+      toast({ title: 'Assignment updated', description: updated.assignmentName });
+      const fresh = await assignmentsApi.getAll(courseCode);
+      setAssignments(fresh || []);
+      setIsEditAssignmentOpen(false);
+      setEditingAssignment(null);
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.response?.data?.message || 'Could not update assignment',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingAssignment(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: number) => {
+    if (!courseCode) return;
+    try {
+      await assignmentsApi.delete(courseCode, assignmentId);
+      toast({ title: 'Assignment deleted' });
+      const fresh = await assignmentsApi.getAll(courseCode);
+      setAssignments(fresh || []);
+    } catch (error: any) {
+      toast({
+        title: 'Deletion failed',
+        description: error.response?.data?.message || 'Could not delete assignment',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openEditCourse = () => {
+    if (!course) return;
+    setEditCourse({ courseName: course.courseName, isPrivate: course.isPrivate, endDate: course.endDate || '' });
+    setIsEditCourseOpen(true);
+  };
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseCode || !editCourse) return;
+    setIsUpdatingCourse(true);
+    try {
+      const updated = await coursesApi.update(courseCode, {
+        courseName: editCourse.courseName,
+        isPrivate: editCourse.isPrivate,
+        endDate: editCourse.endDate || undefined,
+      });
+      toast({ title: 'Course updated', description: updated.courseName });
+      setCourse(updated);
+      setIsEditCourseOpen(false);
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.response?.data?.message || 'Could not update course',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingCourse(false);
     }
   };
 
@@ -154,7 +263,7 @@ const CourseDetail = () => {
             </div>
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-foreground">{course.name}</h1>
+                <h1 className="text-3xl font-bold text-foreground">{course.courseName}</h1>
                 <Badge variant={course.isPrivate ? 'secondary' : 'outline'}>
                   {course.isPrivate ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
                   {course.isPrivate ? 'Private' : 'Public'}
@@ -181,6 +290,59 @@ const CourseDetail = () => {
               <Trash2 className="h-4 w-4" />
               Delete Course
             </Button>
+          )}
+          {isCreator && (
+            <Dialog open={isEditCourseOpen} onOpenChange={setIsEditCourseOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" className="gap-2 ml-2" onClick={openEditCourse}>
+                  Edit Course
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <form onSubmit={handleUpdateCourse}>
+                  <DialogHeader>
+                    <DialogTitle>Edit Course</DialogTitle>
+                    <DialogDescription>Update course details</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editCourseName">Course Name</Label>
+                      <Input
+                        id="editCourseName"
+                        value={editCourse?.courseName || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, courseName: e.target.value } : prev)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editCourseEndDate">End Date (Optional)</Label>
+                      <Input
+                        id="editCourseEndDate"
+                        type="date"
+                        value={editCourse?.endDate || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, endDate: e.target.value } : prev)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="isPrivate">Private Course</Label>
+                      <Switch
+                        id="isPrivate"
+                        checked={editCourse?.isPrivate || false}
+                        onCheckedChange={(checked) => setEditCourse(prev => prev ? { ...prev, isPrivate: checked } : prev)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsEditCourseOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isUpdatingCourse}>
+                      {isUpdatingCourse ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
 
@@ -289,7 +451,15 @@ const CourseDetail = () => {
                           <TableCell>
                             <Badge variant="outline">{assignment.assignmentWeight}%</Badge>
                           </TableCell>
-                          <TableCell>{assignment.createdBy}</TableCell>
+                          <TableCell className="flex items-center gap-2 justify-between">
+                            <span>{assignment.createdBy}</span>
+                            {isCreator && (
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => openEditAssignment(assignment)}>Edit</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteAssignment(assignment.id)}>Delete</Button>
+                              </div>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -298,6 +468,58 @@ const CourseDetail = () => {
               </CardContent>
             </Card>
           </TabsContent>
+          {/* Edit Assignment Modal */}
+          <Dialog open={isEditAssignmentOpen} onOpenChange={setIsEditAssignmentOpen}>
+            <DialogContent>
+              <form onSubmit={handleUpdateAssignment}>
+                <DialogHeader>
+                  <DialogTitle>Edit Assignment</DialogTitle>
+                  <DialogDescription>Modify the assignment details</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="editAssignmentName">Assignment Name</Label>
+                    <Input
+                      id="editAssignmentName"
+                      value={editingAssignment?.assignmentName || ''}
+                      onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, assignmentName: e.target.value } : prev)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editAssignmentDue">Due Date</Label>
+                    <Input
+                      id="editAssignmentDue"
+                      type="datetime-local"
+                      value={editingAssignment?.assignmentDue || ''}
+                      onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, assignmentDue: e.target.value } : prev)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editAssignmentWeight">Weight (%)</Label>
+                    <Input
+                      id="editAssignmentWeight"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={editingAssignment?.assignmentWeight ?? 0}
+                      onChange={(e) => setEditingAssignment(prev => prev ? { ...prev, assignmentWeight: Number(e.target.value) } : prev)}
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsEditAssignmentOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isUpdatingAssignment}>
+                    {isUpdatingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           {/* Students Tab */}
           <TabsContent value="students">

@@ -46,7 +46,7 @@ export interface UserSearchParams {
 export interface CourseDTO {
   id: number;
   courseCode: string;
-  name: string;
+  courseName: string;
   isPrivate: boolean;
   endDate?: string;
   createdBy: string;
@@ -54,7 +54,7 @@ export interface CourseDTO {
 
 export interface CourseCreateRequest {
   courseCode: string;
-  name: string;
+  courseName: string;
   isPrivate: boolean;
   endDate?: string;
 }
@@ -122,6 +122,54 @@ const createApiClient = (): AxiosInstance => {
 
 const api = createApiClient();
 
+// Normalize backend enrollment payloads to match UserCourse interface
+const normalizeUserCourse = (raw: any, fallbackCourseCode?: string): UserCourse => {
+  const userId = Number(raw?.user?.id ?? raw?.userId ?? 0);
+  const username = String(raw?.user?.username ?? raw?.username ?? '');
+  const courseCode = String(raw?.course?.courseCode ?? raw?.courseCode ?? fallbackCourseCode ?? '');
+  const roleRaw = raw?.role ?? raw?.courseRole;
+  const role: 'STUDENT' | 'TUTOR' = roleRaw === 'TUTOR' ? 'TUTOR' : 'STUDENT';
+  const id = typeof raw?.id === 'number' ? raw.id : (Number(raw?.user?.id) || userId || 0);
+  return { id, userId, username, courseCode, role };
+};
+
+// Normalize course payloads to match CourseDTO interface
+const normalizeCourse = (raw: any): CourseDTO => {
+  const createdBy = typeof raw?.createdBy === 'string' ? raw.createdBy : (raw?.createdBy?.username ?? '');
+  // Try multiple aliases to extract course code robustly
+  const codeCandidate = (
+    raw?.courseCode ??
+    raw?.code ??
+    raw?.course?.courseCode ??
+    raw?.course?.code ??
+    raw?.course_code ??
+    raw?.CourseCode ??
+    ''
+  );
+  const courseCode = String(codeCandidate).trim();
+  return {
+    id: Number(raw?.id ?? 0),
+    courseCode,
+    courseName: String((raw?.name ?? raw?.courseName ?? '').toString().trim()),
+    isPrivate: Boolean(raw?.isPrivate ?? raw?.private ?? false),
+    endDate: raw?.endDate ?? undefined,
+    createdBy,
+  };
+};
+
+// Normalize assignment payloads to match Assignment interface
+const normalizeAssignment = (raw: any, fallbackCourseCode?: string): Assignment => {
+  const createdBy = typeof raw?.createdBy === 'string' ? raw.createdBy : (raw?.createdBy?.username ?? '');
+  return {
+    id: Number(raw?.id ?? 0),
+    assignmentName: String(raw?.assignmentName ?? raw?.name ?? ''),
+    assignmentDue: String(raw?.assignmentDue ?? raw?.due ?? raw?.dueDate ?? ''),
+    assignmentWeight: Number(raw?.assignmentWeight ?? raw?.weight ?? 0),
+    courseCode: String(raw?.courseCode ?? raw?.course?.courseCode ?? fallbackCourseCode ?? ''),
+    createdBy,
+  };
+};
+
 // Auth API
 export const authApi = {
   signIn: async (data: SignInRequest): Promise<string> => {
@@ -170,35 +218,41 @@ export const usersApi = {
 // Courses API
 export const coursesApi = {
   getAll: async (): Promise<CourseDTO[]> => {
-    const response: AxiosResponse<ApiResponse<CourseDTO[]>> = await api.get('/courses');
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get('/courses');
+    return (response.data.data || [])
+      .map((c: any) => normalizeCourse(c))
+      .filter((c: CourseDTO) => !!c.courseCode);
   },
 
   getByCode: async (courseCode: string): Promise<CourseDTO> => {
-    const response: AxiosResponse<ApiResponse<CourseDTO>> = await api.get(`/courses/${courseCode}`);
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any>> = await api.get(`/courses/${courseCode}`);
+    return normalizeCourse(response.data.data);
   },
 
   getEnrollments: async (courseCode: string): Promise<UserCourse[]> => {
-    const response: AxiosResponse<ApiResponse<UserCourse[]>> = await api.get(`/courses/all-users/${courseCode}`);
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/all-users/${courseCode}`);
+    const rows = response.data.data || [];
+    return rows.map((r: any) => normalizeUserCourse(r, courseCode));
   },
 
   search: async (q?: string, isPrivate?: boolean): Promise<CourseDTO[]> => {
-    const response: AxiosResponse<ApiResponse<CourseDTO[]>> = await api.get('/courses/search', {
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get('/courses/search', {
       params: { q, 'is-private': isPrivate },
     });
-    return response.data.data || [];
+    return (response.data.data || [])
+      .map((c: any) => normalizeCourse(c))
+      .filter((c: CourseDTO) => !!c.courseCode);
   },
 
   create: async (data: CourseCreateRequest): Promise<CourseDTO> => {
-    const response: AxiosResponse<ApiResponse<CourseDTO>> = await api.post('/courses/create', data);
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any>> = await api.post('/courses/create', data);
+    return normalizeCourse(response.data.data);
   },
 
   update: async (courseCode: string, data: Partial<CourseCreateRequest>): Promise<CourseDTO> => {
-    const response: AxiosResponse<ApiResponse<CourseDTO>> = await api.put(`/courses/update/${courseCode}`, data);
-    return response.data.data;
+    console.log("Update course code: " + courseCode)
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(`/courses/update/${courseCode}`, data);
+    return normalizeCourse(response.data.data);
   },
 
   delete: async (courseCode: string): Promise<void> => {
@@ -209,8 +263,8 @@ export const coursesApi = {
 // Enrollment API
 export const enrollmentApi = {
   enroll: async (courseCode: string): Promise<UserCourse> => {
-    const response: AxiosResponse<ApiResponse<UserCourse>> = await api.post(`/users-courses/enroll/${courseCode}`);
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any>> = await api.post(`/users-courses/enroll/${courseCode}`);
+    return normalizeUserCourse(response.data.data, courseCode);
   },
 
   withdraw: async (courseCode: string): Promise<void> => {
@@ -218,17 +272,21 @@ export const enrollmentApi = {
   },
 
   promoteTutor: async (courseCode: string, userId: number): Promise<UserCourse> => {
-    const response: AxiosResponse<ApiResponse<UserCourse>> = await api.put('/users-courses/promote-tutor', null, {
-      params: { courseCode, userId },
-    });
-    return response.data.data;
+    // Explicitly include query parameters in URL to ensure backend @RequestParam binding
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(
+      `/users-courses/promote-tutor?courseCode=${encodeURIComponent(courseCode)}&userId=${encodeURIComponent(String(userId))}`,
+      null
+    );
+    return normalizeUserCourse(response.data.data, courseCode);
   },
 
   demoteTutor: async (courseCode: string, userId: number): Promise<UserCourse> => {
-    const response: AxiosResponse<ApiResponse<UserCourse>> = await api.put('/users-courses/demote-tutor', null, {
-      params: { courseCode, userId },
-    });
-    return response.data.data;
+    // Explicitly include query parameters in URL to ensure backend @RequestParam binding
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(
+      `/users-courses/demote-tutor?courseCode=${encodeURIComponent(courseCode)}&userId=${encodeURIComponent(String(userId))}`,
+      null
+    );
+    return normalizeUserCourse(response.data.data, courseCode);
   },
 
   removeAllStudents: async (courseCode: string): Promise<void> => {
@@ -243,24 +301,25 @@ export const enrollmentApi = {
 // Assignments API
 export const assignmentsApi = {
   getAll: async (courseCode: string): Promise<Assignment[]> => {
-    const response: AxiosResponse<ApiResponse<Assignment[]>> = await api.get(`/courses/${courseCode}/assignments`);
-    return response.data.data;
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/${courseCode}/assignments`);
+    console.log("Get all runs")
+    return (response.data.data || []).map((a: any) => normalizeAssignment(a, courseCode));
   },
 
   create: async (courseCode: string, data: AssignmentCreateRequest): Promise<Assignment> => {
-    const response: AxiosResponse<ApiResponse<Assignment>> = await api.post(
+    const response: AxiosResponse<ApiResponse<any>> = await api.post(
       `/courses/${courseCode}/assignments/create`,
       data
     );
-    return response.data.data;
+    return normalizeAssignment(response.data.data, courseCode);
   },
 
   update: async (courseCode: string, data: Partial<Assignment> & { id: number }): Promise<Assignment> => {
-    const response: AxiosResponse<ApiResponse<Assignment>> = await api.put(
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(
       `/courses/${courseCode}/assignments/edit`,
       data
     );
-    return response.data.data;
+    return normalizeAssignment(response.data.data, courseCode);
   },
 
   delete: async (courseCode: string, assignmentId: number): Promise<void> => {
