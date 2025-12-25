@@ -7,28 +7,28 @@ const Index = () => {
   const features = [
     {
       icon: BookOpen,
-      title: 'Course Management',
-      description: 'Create and manage courses with ease. Set privacy controls and manage enrollments.',
+      title: 'Quản lý khóa học',
+      description: 'Tạo và quản lý khóa học dễ dàng. Thiết lập quyền riêng tư và quản lý việc ghi danh.',
     },
     {
       icon: Users,
-      title: 'User Administration',
-      description: 'Full user management with roles and permissions. Admin controls for everything.',
+      title: 'Quản trị người dùng',
+      description: 'Quản lý người dùng đầy đủ với vai trò và quyền hạn. Quản trị viên kiểm soát mọi thứ.',
     },
     {
       icon: ClipboardList,
-      title: 'Assignments & Grading',
-      description: 'Create assignments, track submissions, and grade student work efficiently.',
+      title: 'Bài tập & chấm điểm',
+      description: 'Tạo bài tập, theo dõi bài nộp và chấm điểm hiệu quả.',
     },
   ];
 
   const highlights = [
-    'JWT-based authentication',
-    'Role-based access control',
-    'Course enrollment system',
-    'Assignment submissions',
-    'Tutor promotion system',
-    'Grade management',
+    'Xác thực dựa trên JWT',
+    'Kiểm soát truy cập theo vai trò',
+    'Hệ thống ghi danh khóa học',
+    'Nộp bài tập',
+    'Hệ thống thăng hạng trợ giảng',
+    'Quản lý điểm số',
   ];
 
   return (
@@ -44,10 +44,10 @@ const Index = () => {
           </Link>
           <div className="flex items-center gap-2">
             <Link to="/signin">
-              <Button variant="ghost" size="sm">Sign In</Button>
+              <Button variant="ghost" size="sm">Đăng nhập</Button>
             </Link>
             <Link to="/signup">
-              <Button size="sm">Get Started</Button>
+              <Button size="sm">Bắt đầu</Button>
             </Link>
           </div>
         </div>
@@ -59,23 +59,23 @@ const Index = () => {
         <div className="container py-24 md:py-32">
           <div className="mx-auto max-w-3xl text-center animate-slide-up">
             <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
-              Modern Learning
-              <span className="block text-primary mt-2">Management System</span>
+              Học tập hiện đại
+              <span className="block text-primary mt-2">Hệ thống quản lý</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              A complete educational platform built with Spring Boot and React. 
-              Manage courses, assignments, and users with a beautiful, intuitive interface.
+              Nền tảng giáo dục hoàn chỉnh xây dựng bằng Spring Boot và React. 
+              Quản lý khóa học, bài tập và người dùng với giao diện đẹp và trực quan.
             </p>
             <div className="mt-10 flex items-center justify-center gap-4">
               <Link to="/signup">
                 <Button size="lg" className="gap-2 h-12 px-8">
-                  Get Started
+                  Bắt đầu
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/signin">
                 <Button variant="outline" size="lg" className="h-12 px-8">
-                  Sign In
+                  Đăng nhập
                 </Button>
               </Link>
             </div>
@@ -88,10 +88,10 @@ const Index = () => {
         <div className="container">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-foreground">
-              Everything you need to manage education
+              Mọi thứ bạn cần để quản lý giáo dục
             </h2>
             <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
-              Built with modern technologies and best practices for a seamless experience.
+              Xây dựng với công nghệ hiện đại và thực hành tốt nhất để mang lại trải nghiệm mượt mà.
             </p>
           </div>
           
@@ -125,11 +125,11 @@ const Index = () => {
           <div className="grid gap-12 lg:grid-cols-2 items-center">
             <div>
               <h2 className="text-3xl font-bold text-foreground">
-                Powered by Spring Boot
+                Vận hành bởi Spring Boot
               </h2>
               <p className="mt-4 text-muted-foreground">
-                This frontend connects to a robust Spring Boot backend with JWT authentication, 
-                role-based access control, and RESTful API endpoints.
+                Giao diện này kết nối với backend Spring Boot mạnh mẽ với xác thực JWT, 
+                kiểm soát truy cập theo vai trò và các endpoint RESTful.
               </p>
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 {highlights.map((item) => (
@@ -172,15 +172,15 @@ const Index = () => {
       <section className="py-20 gradient-hero">
         <div className="container text-center">
           <h2 className="text-3xl font-bold text-primary-foreground">
-            Ready to get started?
+            Sẵn sàng bắt đầu chưa?
           </h2>
           <p className="mt-4 text-primary-foreground/80 max-w-xl mx-auto">
-            Create your account now and start managing your educational content today.
+            Tạo tài khoản ngay và bắt đầu quản lý nội dung học tập của bạn hôm nay.
           </p>
           <div className="mt-8">
             <Link to="/signup">
               <Button size="lg" variant="secondary" className="gap-2 h-12 px-8">
-                Create Account
+                Tạo tài khoản
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -199,7 +199,7 @@ const Index = () => {
               <span className="font-semibold text-foreground">EduPortal</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 EduPortal. Built with Spring Boot & React.
+              © 2024 EduPortal. Xây dựng với Spring Boot & React.
             </p>
           </div>
         </div>

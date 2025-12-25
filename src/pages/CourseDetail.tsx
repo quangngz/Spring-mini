@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { coursesApi, assignmentsApi, enrollmentApi, CourseDTO, Assignment, UserCourse } from '@/lib/api';
+import { coursesApi, assignmentsApi, enrollmentApi, submissionsApi, CourseDTO, Assignment, UserCourse, Submission } from '@/lib/api';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, BookOpen, Users, Calendar, Lock, Unlock, Plus, Loader2, Trash2, GraduationCap, UserCheck } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Calendar, Lock, Unlock, Plus, Loader2, Trash2, GraduationCap, UserCheck, Send } from 'lucide-react';
 
 const CourseDetail = () => {
   const { courseCode } = useParams<{ courseCode: string }>();
@@ -40,16 +41,29 @@ const CourseDetail = () => {
     assignmentDue: string;
     assignmentWeight: number;
   } | null>(null);
-
   const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
   const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
-  const [editCourse, setEditCourse] = useState<{ courseName: string; isPrivate: boolean; endDate?: string } | null>(null);
+  const [editCourse, setEditCourse] = useState<{ courseName: string; isPrivate: boolean; 
+    endDate?: string ; oldPassword?: string; password?: string; confirmPassword?: string; courseDescription?: string } | null>(null);
+
+  // Submission dialog state
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionContent, setSubmissionContent] = useState('');
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
+
+  // View submissions dialog state
+  const [isViewSubsOpen, setIsViewSubsOpen] = useState(false);
+  const [viewingAssignment, setViewingAssignment] = useState<Assignment | null>(null);
+  const [isLoadingSubs, setIsLoadingSubs] = useState(false);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
 
   useEffect(() => {
     if (!courseCode) {
       toast({
-        title: 'Invalid course URL',
-        description: 'No course code provided in URL',
+        title: 'URL khóa học không hợp lệ',
+        description: 'Không có mã khóa học trong URL',
         variant: 'destructive',
       });
       navigate('/dashboard');
@@ -63,15 +77,13 @@ const CourseDetail = () => {
           assignmentsApi.getAll(courseCode),
           coursesApi.getEnrollments(courseCode),
         ]);
-        // Debug: track fetched payloads (assignments only)
-        console.log('Debug: assignmentsData (fetched)', assignmentsData);
         setCourse(courseData);
         setAssignments(assignmentsData || []);
         setEnrollments(enrollmentsData || []);
       } catch (error) {
         toast({
-          title: 'Error',
-          description: 'Failed to fetch course details',
+          title: 'Lỗi',
+          description: 'Không thể lấy chi tiết khóa học',
           variant: 'destructive',
         });
       } finally {
@@ -82,12 +94,8 @@ const CourseDetail = () => {
     fetchData();
   }, [courseCode]);
 
-  // Log assignments whenever they change
-  useEffect(() => {
-    console.log('Debug: assignments state updated', assignments);
-  }, [assignments]);
-
   const isCreator = user?.username === course?.createdBy;
+  const isTutor = isCreator || enrollments.some((e) => e.username === user?.username && e.role === 'TUTOR');
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,20 +104,19 @@ const CourseDetail = () => {
     setIsCreatingAssignment(true);
     try {
       const created = await assignmentsApi.create(courseCode, newAssignment);
-      console.log('Debug: assignment created', created);
       // Re-fetch assignments to verify persistence in DB
       const freshAssignments = await assignmentsApi.getAll(courseCode);
       setAssignments(freshAssignments || []);
       toast({
-        title: 'Assignment created!',
-        description: `${newAssignment.assignmentName} has been added`,
+        title: 'Tạo bài tập thành công!',
+        description: `${newAssignment.assignmentName} đã được thêm`,
       });
       setIsCreateAssignmentOpen(false);
       setNewAssignment({ assignmentName: '', assignmentDue: '', assignmentWeight: 10 });
     } catch (error: any) {
       toast({
-        title: 'Creation failed',
-        description: error.response?.data?.message || 'Could not create assignment',
+        title: 'Tạo thất bại',
+        description: error.response?.data?.message || 'Không thể tạo bài tập',
         variant: 'destructive',
       });
     } finally {
@@ -133,15 +140,15 @@ const CourseDetail = () => {
     setIsUpdatingAssignment(true);
     try {
       const updated = await assignmentsApi.update(courseCode, editingAssignment);
-      toast({ title: 'Assignment updated', description: updated.assignmentName });
+      toast({ title: 'Cập nhật bài tập', description: updated.assignmentName });
       const fresh = await assignmentsApi.getAll(courseCode);
       setAssignments(fresh || []);
       setIsEditAssignmentOpen(false);
       setEditingAssignment(null);
     } catch (error: any) {
       toast({
-        title: 'Update failed',
-        description: error.response?.data?.message || 'Could not update assignment',
+        title: 'Cập nhật thất bại',
+        description: error.response?.data?.message || 'Không thể cập nhật bài tập',
         variant: 'destructive',
       });
     } finally {
@@ -153,13 +160,13 @@ const CourseDetail = () => {
     if (!courseCode) return;
     try {
       await assignmentsApi.delete(courseCode, assignmentId);
-      toast({ title: 'Assignment deleted' });
+      toast({ title: 'Đã xóa bài tập' });
       const fresh = await assignmentsApi.getAll(courseCode);
       setAssignments(fresh || []);
     } catch (error: any) {
       toast({
-        title: 'Deletion failed',
-        description: error.response?.data?.message || 'Could not delete assignment',
+        title: 'Xóa thất bại',
+        description: error.response?.data?.message || 'Không thể xóa bài tập',
         variant: 'destructive',
       });
     }
@@ -167,7 +174,7 @@ const CourseDetail = () => {
 
   const openEditCourse = () => {
     if (!course) return;
-    setEditCourse({ courseName: course.courseName, isPrivate: course.isPrivate, endDate: course.endDate || '' });
+    setEditCourse({ courseName: course.courseName, isPrivate: course.isPrivate, endDate: course.endDate || '', courseDescription: course.courseDescription || '' });
     setIsEditCourseOpen(true);
   };
 
@@ -180,14 +187,16 @@ const CourseDetail = () => {
         courseName: editCourse.courseName,
         isPrivate: editCourse.isPrivate,
         endDate: editCourse.endDate || undefined,
-      });
-      toast({ title: 'Course updated', description: updated.courseName });
+        courseDescription: editCourse.courseDescription,
+      }, editCourse.oldPassword, editCourse.password, editCourse.confirmPassword);
+
+      toast({ title: 'Cập nhật khóa học', description: updated.courseName });
       setCourse(updated);
       setIsEditCourseOpen(false);
     } catch (error: any) {
       toast({
-        title: 'Update failed',
-        description: error.response?.data?.message || 'Could not update course',
+        title: 'Cập nhật thất bại',
+        description: error.response?.data?.message || 'Không thể cập nhật khóa học',
         variant: 'destructive',
       });
     } finally {
@@ -199,12 +208,12 @@ const CourseDetail = () => {
     if (!courseCode) return;
     try {
       await enrollmentApi.promoteTutor(courseCode, userId);
-      toast({ title: 'User promoted to tutor' });
+      toast({ title: 'Đã thăng hạng người dùng thành Trợ giảng' });
       const updated = await coursesApi.getEnrollments(courseCode);
       setEnrollments(updated || []);
     } catch (error: any) {
       toast({
-        title: 'Promotion failed',
+        title: 'Thăng hạng thất bại',
         description: error.response?.data?.message,
         variant: 'destructive',
       });
@@ -215,16 +224,84 @@ const CourseDetail = () => {
     if (!courseCode) return;
     try {
       await coursesApi.delete(courseCode);
-      toast({ title: 'Course deleted' });
+      toast({ title: 'Đã xóa khóa học' });
       navigate('/dashboard');
     } catch (error: any) {
       toast({
-        title: 'Deletion failed',
+        title: 'Xóa thất bại',
         description: error.response?.data?.message,
         variant: 'destructive',
       });
     }
   };
+
+  const openSubmitDialog = async (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setSubmissionContent('');
+    setSelectedSubmissionId(null);
+    if (!courseCode || !user?.username) {
+      toast({ title: 'Không thể mở chỉnh sửa', description: 'Thiếu thông tin người dùng hoặc khóa học', variant: 'destructive' });
+      return;
+    }
+    try {
+      const rows = await submissionsApi.getByAssignment(assignment.id);
+      const mine = rows.find((s) => s.username === user.username);
+      if (!mine) {
+        toast({ title: 'Chưa có bài nộp', description: 'Bạn chưa nộp bài để chỉnh sửa', variant: 'destructive' });
+        return;
+      }
+      setSelectedSubmissionId(mine.id);
+      setSubmissionContent(mine.content ?? '');
+      setIsSubmitOpen(true);
+    } catch (error: any) {
+      toast({ title: 'Không thể tải bài nộp', description: error.response?.data?.message || 'Vui lòng thử lại sau', variant: 'destructive' });
+    }
+  };
+
+  const openViewSubmissions = async (assignment: Assignment) => {
+    if (!courseCode) return;
+    setViewingAssignment(assignment);
+    setIsViewSubsOpen(true);
+    setIsLoadingSubs(true);
+    try {
+      const rows = await submissionsApi.getByAssignment(assignment.id);
+      setSubmissions(rows || []);
+    } catch (error: any) {
+      toast({ title: 'Không thể tải bài nộp', description: error.response?.data?.message, variant: 'destructive' });
+    } finally {
+      setIsLoadingSubs(false);
+    }
+  };
+
+  const handleEditSubmission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubmissionId) {
+      toast({ title: 'Không tìm thấy bài nộp', description: 'Không thể chỉnh sửa vì thiếu mã bài nộp', variant: 'destructive' });
+      return;
+    }
+    if (!submissionContent.trim()) {
+      toast({ title: 'Nội dung trống', description: 'Vui lòng nhập nội dung trước khi nộp', variant: 'destructive' });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await submissionsApi.edit(selectedSubmissionId, submissionContent.trim());
+      toast({ title: 'Cập nhật bài nộp thành công', description: selectedAssignment?.assignmentName });
+      setIsSubmitOpen(false);
+      setSubmissionContent('');
+      setSelectedAssignment(null);
+      setSelectedSubmissionId(null);
+    } catch (error: any) {
+      toast({
+        title: 'Chỉnh sửa thất bại',
+        description: error.response?.data?.message || 'Không thể chỉnh sửa bài nộp',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+ 
 
   if (isLoading) {
     return (
@@ -240,7 +317,7 @@ const CourseDetail = () => {
     return (
       <MainLayout>
         <div className="container py-8 text-center">
-          <h1 className="text-2xl font-bold">Course not found</h1>
+          <h1 className="text-2xl font-bold">Không tìm thấy khóa học</h1>
         </div>
       </MainLayout>
     );
@@ -252,7 +329,7 @@ const CourseDetail = () => {
         {/* Back Button */}
         <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6 gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to Courses
+          Quay lại Khóa học
         </Button>
 
         {/* Header */}
@@ -266,19 +343,19 @@ const CourseDetail = () => {
                 <h1 className="text-3xl font-bold text-foreground">{course.courseName}</h1>
                 <Badge variant={course.isPrivate ? 'secondary' : 'outline'}>
                   {course.isPrivate ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
-                  {course.isPrivate ? 'Private' : 'Public'}
+                  {course.isPrivate ? 'Riêng tư' : 'Công khai'}
                 </Badge>
               </div>
               <div className="flex items-center gap-4 text-muted-foreground">
                 <span className="font-mono text-sm bg-muted px-2 py-1 rounded">{course.courseCode}</span>
                 <span className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {enrollments.length} enrolled
+                  {enrollments.length} đã ghi danh
                 </span>
                 {course.endDate && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Ends {new Date(course.endDate).toLocaleDateString()}
+                    Kết thúc {new Date(course.endDate).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -288,25 +365,25 @@ const CourseDetail = () => {
           {isCreator && (
             <Button variant="destructive" onClick={handleDeleteCourse} className="gap-2">
               <Trash2 className="h-4 w-4" />
-              Delete Course
+              Xóa khóa học
             </Button>
           )}
           {isCreator && (
             <Dialog open={isEditCourseOpen} onOpenChange={setIsEditCourseOpen}>
               <DialogTrigger asChild>
                 <Button variant="secondary" className="gap-2 ml-2" onClick={openEditCourse}>
-                  Edit Course
+                  Chỉnh sửa khóa học
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <form onSubmit={handleUpdateCourse}>
                   <DialogHeader>
-                    <DialogTitle>Edit Course</DialogTitle>
-                    <DialogDescription>Update course details</DialogDescription>
+                    <DialogTitle>Chỉnh sửa khóa học</DialogTitle>
+                    <DialogDescription>Cập nhật thông tin khóa học</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="editCourseName">Course Name</Label>
+                      <Label htmlFor="editCourseName">Tên khóa học</Label>
                       <Input
                         id="editCourseName"
                         value={editCourse?.courseName || ''}
@@ -315,7 +392,17 @@ const CourseDetail = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="editCourseEndDate">End Date (Optional)</Label>
+                      <Label htmlFor="editCourseDescription">Mô tả khóa học</Label>
+                      <Textarea
+                        id="editCourseDescription"
+                        placeholder="Thêm mô tả cho khóa học..."
+                        value={editCourse?.courseDescription || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, courseDescription: e.target.value } : prev)}
+                        rows={4}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editCourseEndDate">Ngày kết thúc (Tùy chọn)</Label>
                       <Input
                         id="editCourseEndDate"
                         type="date"
@@ -324,20 +411,51 @@ const CourseDetail = () => {
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="isPrivate">Private Course</Label>
+                      <Label htmlFor="isPrivate">Khóa học riêng tư</Label>
                       <Switch
                         id="isPrivate"
                         checked={editCourse?.isPrivate || false}
                         onCheckedChange={(checked) => setEditCourse(prev => prev ? { ...prev, isPrivate: checked } : prev)}
                       />
                     </div>
+                    {editCourse?.isPrivate && (
+                    <div className="space-y-2">
+                      <Label htmlFor="courseOldPassword">Mật khẩu cũ</Label>
+                      <Input
+                        id="courseOldPassword"
+                        type="password"
+                        placeholder="Nhập mật khẩu cũ"
+                        value={editCourse?.oldPassword || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, oldPassword: e.target.value } : prev)}
+                        required={editCourse?.isPrivate}
+                      />
+                      <Label htmlFor="coursePassword">Mật khẩu khóa học</Label>
+                      <Input
+                        id="coursePassword"
+                        type="password"
+                        placeholder="Nhập mật khẩu mới"
+                        value={editCourse?.password || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, password: e.target.value } : prev)}
+                        required={editCourse?.isPrivate}
+                      />
+                      <Label htmlFor="coursePasswordConfirm">Xác nhận mật khẩu</Label>
+                      <Input
+                        id="coursePasswordConfirm"
+                        type="password"
+                        placeholder="Nhập lại mật khẩu mới"
+                        value={editCourse?.confirmPassword || ''}
+                        onChange={(e) => setEditCourse(prev => prev ? { ...prev, confirmPassword: e.target.value } : prev)}
+                        required={editCourse?.isPrivate}
+                      />
+                    </div>
+                  )}
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsEditCourseOpen(false)}>
-                      Cancel
+                      Hủy
                     </Button>
                     <Button type="submit" disabled={isUpdatingCourse}>
-                      {isUpdatingCourse ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                      {isUpdatingCourse ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Lưu thay đổi'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -346,16 +464,22 @@ const CourseDetail = () => {
           )}
         </div>
 
+        {course.courseDescription && (
+          <div className="mb-6 text-muted-foreground whitespace-pre-wrap">
+            {course.courseDescription}
+          </div>
+        )}
+
         {/* Tabs */}
         <Tabs defaultValue="assignments" className="space-y-6">
-          <TabsList>
+            <TabsList>
             <TabsTrigger value="assignments" className="gap-2">
               <GraduationCap className="h-4 w-4" />
-              Assignments
+              Bài tập
             </TabsTrigger>
             <TabsTrigger value="students" className="gap-2">
               <Users className="h-4 w-4" />
-              Students
+              Học viên
             </TabsTrigger>
           </TabsList>
 
@@ -364,25 +488,25 @@ const CourseDetail = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Assignments</CardTitle>
-                  <CardDescription>Manage course assignments and due dates</CardDescription>
+                  <CardTitle>Bài tập</CardTitle>
+                  <CardDescription>Quản lý bài tập và hạn nộp</CardDescription>
                 </div>
                 <Dialog open={isCreateAssignmentOpen} onOpenChange={setIsCreateAssignmentOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm" className="gap-2">
                       <Plus className="h-4 w-4" />
-                      Add Assignment
+                      Thêm bài tập
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <form onSubmit={handleCreateAssignment}>
                       <DialogHeader>
-                        <DialogTitle>Create Assignment</DialogTitle>
-                        <DialogDescription>Add a new assignment to this course</DialogDescription>
+                        <DialogTitle>Tạo bài tập</DialogTitle>
+                        <DialogDescription>Thêm bài tập mới cho khóa học này</DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="assignmentName">Assignment Name</Label>
+                          <Label htmlFor="assignmentName">Tên bài tập</Label>
                           <Input
                             id="assignmentName"
                             value={newAssignment.assignmentName}
@@ -391,7 +515,7 @@ const CourseDetail = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="assignmentDue">Due Date</Label>
+                          <Label htmlFor="assignmentDue">Hạn nộp</Label>
                           <Input
                             id="assignmentDue"
                             type="datetime-local"
@@ -401,7 +525,7 @@ const CourseDetail = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="assignmentWeight">Weight (%)</Label>
+                          <Label htmlFor="assignmentWeight">Trọng số (%)</Label>
                           <Input
                             id="assignmentWeight"
                             type="number"
@@ -415,10 +539,10 @@ const CourseDetail = () => {
                       </div>
                       <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setIsCreateAssignmentOpen(false)}>
-                          Cancel
+                          Hủy
                         </Button>
                         <Button type="submit" disabled={isCreatingAssignment}>
-                          {isCreatingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create'}
+                          {isCreatingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Tạo'}
                         </Button>
                       </DialogFooter>
                     </form>
@@ -429,16 +553,17 @@ const CourseDetail = () => {
                 {assignments.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No assignments yet</p>
+                    <p>Chưa có bài tập nào</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Assignment</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Weight</TableHead>
-                        <TableHead>Created By</TableHead>
+                        <TableHead>Bài tập</TableHead>
+                        <TableHead>Hạn nộp</TableHead>
+                        <TableHead>Trọng số</TableHead>
+                        <TableHead>Tạo bởi</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -455,10 +580,23 @@ const CourseDetail = () => {
                             <span>{assignment.createdBy}</span>
                             {isCreator && (
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => openEditAssignment(assignment)}>Edit</Button>
-                                <Button size="sm" variant="destructive" onClick={() => handleDeleteAssignment(assignment.id)}>Delete</Button>
+                                <Button size="sm" variant="outline" onClick={() => openEditAssignment(assignment)}>Chỉnh sửa</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleDeleteAssignment(assignment.id)}>Xóa</Button>
                               </div>
                             )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isTutor && (
+                                <Button size="sm" variant="outline" onClick={() => openViewSubmissions(assignment)}>
+                                  Xem bài nộp
+                                </Button>
+                              )}
+                              <Button size="sm" className="gap-2" onClick={() => openSubmitDialog(assignment)}>
+                                <Send className="h-4 w-4" />
+                                Chỉnh sửa bài nộp
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -468,17 +606,100 @@ const CourseDetail = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Edit Submission Modal */}
+          <Dialog open={isSubmitOpen} onOpenChange={setIsSubmitOpen}>
+            <DialogContent>
+              <form onSubmit={handleEditSubmission}>
+                <DialogHeader>
+                  <DialogTitle>Chỉnh sửa bài nộp</DialogTitle>
+                  <DialogDescription>
+                    {selectedAssignment ? `Chỉnh sửa cho: ${selectedAssignment.assignmentName}` : 'Nhập nội dung cập nhật cho bài nộp của bạn'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="submissionContent">Nội dung</Label>
+                    <Textarea
+                      id="submissionContent"
+                      placeholder="Cập nhật liên kết, văn bản, hoặc câu trả lời của bạn..."
+                      value={submissionContent}
+                      onChange={(e) => setSubmissionContent(e.target.value)}
+                      rows={6}
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsSubmitOpen(false)}>
+                    Hủy
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting} className="gap-2">
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {isSubmitting ? 'Đang cập nhật...' : 'Cập nhật bài nộp'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* View Submissions Modal */}
+          <Dialog open={isViewSubsOpen} onOpenChange={setIsViewSubsOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Bài nộp</DialogTitle>
+                <DialogDescription>
+                  {viewingAssignment ? `Danh sách bài nộp cho: ${viewingAssignment.assignmentName}` : ''}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-2">
+                {isLoadingSubs ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : submissions.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">Chưa có bài nộp nào</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Học viên</TableHead>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead>Điểm</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {submissions.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell>@{s.username}</TableCell>
+                          <TableCell>{new Date(s.submissionTime).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Badge variant={s.status === 'LATE' ? 'destructive' : 'secondary'}>{s.status}</Badge>
+                          </TableCell>
+                          <TableCell>{s.grade ?? 'Chưa chấm'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsViewSubsOpen(false)}>Đóng</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           {/* Edit Assignment Modal */}
           <Dialog open={isEditAssignmentOpen} onOpenChange={setIsEditAssignmentOpen}>
             <DialogContent>
               <form onSubmit={handleUpdateAssignment}>
                 <DialogHeader>
-                  <DialogTitle>Edit Assignment</DialogTitle>
-                  <DialogDescription>Modify the assignment details</DialogDescription>
+                  <DialogTitle>Chỉnh sửa bài tập</DialogTitle>
+                  <DialogDescription>Chỉnh sửa thông tin bài tập</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="editAssignmentName">Assignment Name</Label>
+                    <Label htmlFor="editAssignmentName">Tên bài tập</Label>
                     <Input
                       id="editAssignmentName"
                       value={editingAssignment?.assignmentName || ''}
@@ -487,7 +708,7 @@ const CourseDetail = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="editAssignmentDue">Due Date</Label>
+                    <Label htmlFor="editAssignmentDue">Hạn nộp</Label>
                     <Input
                       id="editAssignmentDue"
                       type="datetime-local"
@@ -497,7 +718,7 @@ const CourseDetail = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="editAssignmentWeight">Weight (%)</Label>
+                    <Label htmlFor="editAssignmentWeight">Trọng số (%)</Label>
                     <Input
                       id="editAssignmentWeight"
                       type="number"
@@ -511,10 +732,10 @@ const CourseDetail = () => {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsEditAssignmentOpen(false)}>
-                    Cancel
+                    Hủy
                   </Button>
                   <Button type="submit" disabled={isUpdatingAssignment}>
-                    {isUpdatingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+                    {isUpdatingAssignment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Lưu thay đổi'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -525,22 +746,22 @@ const CourseDetail = () => {
           <TabsContent value="students">
             <Card>
               <CardHeader>
-                <CardTitle>Enrolled Students</CardTitle>
-                <CardDescription>View and manage course enrollments</CardDescription>
+                <CardTitle>Học viên đã ghi danh</CardTitle>
+                <CardDescription>Xem và quản lý việc ghi danh khóa học</CardDescription>
               </CardHeader>
               <CardContent>
                 {enrollments.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No students enrolled yet</p>
+                    <p>Chưa có học viên nào ghi danh</p>
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Tên đăng nhập</TableHead>
+                        <TableHead>Vai trò</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -561,7 +782,7 @@ const CourseDetail = () => {
                                 className="gap-1"
                               >
                                 <UserCheck className="h-4 w-4" />
-                                Promote to Tutor
+                                Thăng hạng thành Trợ giảng
                               </Button>
                             )}
                           </TableCell>

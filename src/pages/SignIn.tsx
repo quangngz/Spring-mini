@@ -42,9 +42,9 @@ const SignIn = () => {
             </div>
           </Link>
           <div>
-            <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
+            <CardTitle className="text-2xl font-semibold">Chào mừng trở lại</CardTitle>
             <CardDescription className="mt-2">
-              Sign in to your account to continue
+              Đăng nhập vào tài khoản để tiếp tục
             </CardDescription>
           </div>
         </CardHeader>
@@ -56,7 +56,7 @@ const SignIn = () => {
               <Input
                 id="username"
                 type="text"
-                placeholder="Enter your username"
+                placeholder="Nhập tên đăng nhập"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -69,7 +69,7 @@ const SignIn = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Nhập mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -83,17 +83,17 @@ const SignIn = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Đang đăng nhập...
                 </>
               ) : (
-                'Sign In'
+                'Đăng nhập'
               )}
             </Button>
             
             <p className="text-sm text-muted-foreground text-center">
-              Don't have an account?{' '}
+              Chưa có tài khoản?{' '}
               <Link to="/signup" className="text-primary hover:underline font-medium">
-                Sign up
+                Đăng ký
               </Link>
             </p>
           </CardFooter>

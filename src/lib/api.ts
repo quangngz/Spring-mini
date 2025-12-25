@@ -50,6 +50,7 @@ export interface CourseDTO {
   isPrivate: boolean;
   endDate?: string;
   createdBy: string;
+  courseDescription?: string;
 }
 
 export interface CourseCreateRequest {
@@ -57,6 +58,23 @@ export interface CourseCreateRequest {
   courseName: string;
   isPrivate: boolean;
   endDate?: string;
+  password?: string;
+  courseDescription?: string;
+  description?: string; // alias for backend compatibility
+}
+
+// Align with backend CourseUpdateRequest(@Valid Course course, String oldPassword, String password1, String password2)
+export interface CourseUpdateRequest {
+  course: {
+    courseCode: string;
+    courseName?: string;
+    isPrivate?: boolean;
+    endDate?: string;
+    courseDescription?: string;
+  };
+  oldPassword?: string;
+  password1?: string;
+  password2?: string;
 }
 
 export interface UserCourse {
@@ -137,23 +155,16 @@ const normalizeUserCourse = (raw: any, fallbackCourseCode?: string): UserCourse 
 const normalizeCourse = (raw: any): CourseDTO => {
   const createdBy = typeof raw?.createdBy === 'string' ? raw.createdBy : (raw?.createdBy?.username ?? '');
   // Try multiple aliases to extract course code robustly
-  const codeCandidate = (
-    raw?.courseCode ??
-    raw?.code ??
-    raw?.course?.courseCode ??
-    raw?.course?.code ??
-    raw?.course_code ??
-    raw?.CourseCode ??
-    ''
-  );
-  const courseCode = String(codeCandidate).trim();
+
+  const courseCode = String(raw?.courseCode).trim();
   return {
     id: Number(raw?.id ?? 0),
-    courseCode,
+    courseCode, 
     courseName: String((raw?.name ?? raw?.courseName ?? '').toString().trim()),
     isPrivate: Boolean(raw?.isPrivate ?? raw?.private ?? false),
     endDate: raw?.endDate ?? undefined,
     createdBy,
+    courseDescription: String(raw?.courseDescription ?? "").toString()
   };
 };
 
@@ -235,9 +246,10 @@ export const coursesApi = {
     return rows.map((r: any) => normalizeUserCourse(r, courseCode));
   },
 
-  search: async (q?: string, isPrivate?: boolean): Promise<CourseDTO[]> => {
+  search: async (q?: string, isPrivate?: boolean | null): Promise<CourseDTO[]> => {
     const response: AxiosResponse<ApiResponse<any[]>> = await api.get('/courses/search', {
-      params: { q, 'is-private': isPrivate },
+      // Always include is-private param; allow null when no filter is applied
+      params: { q, 'is-private': isPrivate ?? null },
     });
     return (response.data.data || [])
       .map((c: any) => normalizeCourse(c))
@@ -249,9 +261,28 @@ export const coursesApi = {
     return normalizeCourse(response.data.data);
   },
 
-  update: async (courseCode: string, data: Partial<CourseCreateRequest>): Promise<CourseDTO> => {
-    console.log("Update course code: " + courseCode)
-    const response: AxiosResponse<ApiResponse<any>> = await api.put(`/courses/update/${courseCode}`, data);
+  update: async (
+    courseCode: string,
+    data: Partial<CourseCreateRequest>,
+    oldPassword?: string,
+    password1?: string,
+    password2?: string
+  ): Promise<CourseDTO> => {
+    // Build request body matching backend record structure
+    const body: CourseUpdateRequest = {
+      course: {
+        courseCode,
+        courseName: data.courseName,
+        isPrivate: data.isPrivate,
+        endDate: data.endDate,
+        courseDescription: data.courseDescription,
+      },
+      oldPassword,
+      password1,
+      password2,
+    };
+
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(`/courses/update/${courseCode}`, body);
     return normalizeCourse(response.data.data);
   },
 
@@ -262,8 +293,8 @@ export const coursesApi = {
 
 // Enrollment API
 export const enrollmentApi = {
-  enroll: async (courseCode: string): Promise<UserCourse> => {
-    const response: AxiosResponse<ApiResponse<any>> = await api.post(`/users-courses/enroll/${courseCode}`);
+  enroll: async (courseCode: string, password?: string): Promise<UserCourse> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.post(`/users-courses/enroll/${courseCode}`, password ? { password } : {});
     return normalizeUserCourse(response.data.data, courseCode);
   },
 
@@ -296,13 +327,17 @@ export const enrollmentApi = {
   removeAllCoursesForUser: async (userId: number): Promise<void> => {
     await api.delete(`/users-courses/remove-all-courses-for-user/${userId}`);
   },
+
+  getUserEnrolledCourse: async (): Promise<CourseDTO[]> => {
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/users-courses/all-courses`);
+    return (response.data.data || []).map((c: any) => normalizeCourse(c));
+  },
 };
 
 // Assignments API
 export const assignmentsApi = {
   getAll: async (courseCode: string): Promise<Assignment[]> => {
     const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/${courseCode}/assignments`);
-    console.log("Get all runs")
     return (response.data.data || []).map((a: any) => normalizeAssignment(a, courseCode));
   },
 
@@ -334,10 +369,11 @@ export const submissionsApi = {
     return response.data.data;
   },
 
-  getByAssignment: async (courseCode: string, assignmentId: number): Promise<Submission[]> => {
+  getByAssignment: async (assignmentId: number): Promise<Submission[]> => {
     const response: AxiosResponse<ApiResponse<Submission[]>> = await api.get(
-      `/submissions/${courseCode}/${assignmentId}`
-    );
+      `/submissions`,  {
+      params: { "assignmentId": assignmentId },
+    });
     return response.data.data;
   },
 

@@ -38,21 +38,21 @@ export const Header = () => {
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <BookOpen className="h-4 w-4" />
-                  Courses
+                  Khóa học
                 </Button>
               </Link>
               {isAdmin && (
                 <Link to="/users">
                   <Button variant="ghost" size="sm" className="gap-2">
                     <Users className="h-4 w-4" />
-                    Users
+                    Người dùng
                   </Button>
                 </Link>
               )}
               <Link to="/assignments">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <ClipboardList className="h-4 w-4" />
-                  Assignments
+                  Bài tập
                 </Button>
               </Link>
             </nav>
@@ -77,12 +77,12 @@ export const Header = () => {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="mr-2 h-4 w-4" />
-                  Profile
+                  Hồ sơ
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  Đăng xuất
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -90,10 +90,10 @@ export const Header = () => {
         ) : (
           <div className="flex items-center gap-2">
             <Link to="/signin">
-              <Button variant="ghost" size="sm">Sign In</Button>
+              <Button variant="ghost" size="sm">Đăng nhập</Button>
             </Link>
             <Link to="/signup">
-              <Button size="sm">Get Started</Button>
+              <Button size="sm">Bắt đầu</Button>
             </Link>
           </div>
         )}

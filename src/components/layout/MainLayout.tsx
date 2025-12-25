@@ -14,7 +14,7 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
       </main>
       <footer className="border-t border-border py-6 bg-card">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2024 EduPortal. Built with Spring Boot & React.</p>
+          <p>© 2024 EduPortal. Xây dựng với Spring Boot & React.</p>
         </div>
       </footer>
     </div>

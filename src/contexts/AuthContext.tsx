@@ -64,13 +64,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       
       toast({
-        title: 'Welcome back!',
-        description: `Signed in as ${username}`,
+        title: 'Chào mừng trở lại!',
+        description: `Đăng nhập với tên ${username}`,
       });
     } catch (error: any) {
       toast({
-        title: 'Sign in failed',
-        description: error.response?.data?.message || 'Invalid credentials',
+        title: 'Đăng nhập thất bại',
+        description: error.response?.data?.message || 'Thông tin đăng nhập không hợp lệ',
         variant: 'destructive',
       });
       throw error;
@@ -81,13 +81,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authApi.signUp({ username, password, firstname, lastname });
       toast({
-        title: 'Account created!',
-        description: 'You can now sign in with your credentials',
+        title: 'Tạo tài khoản thành công!',
+        description: 'Bạn có thể đăng nhập bằng thông tin của mình',
       });
     } catch (error: any) {
       toast({
-        title: 'Sign up failed',
-        description: error.response?.data?.message || 'Could not create account',
+        title: 'Đăng ký thất bại',
+        description: error.response?.data?.message || 'Không thể tạo tài khoản',
         variant: 'destructive',
       });
       throw error;
@@ -100,8 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(null);
     setUser(null);
     toast({
-      title: 'Signed out',
-      description: 'See you next time!',
+      title: 'Đã đăng xuất',
+      description: 'Hẹn gặp lại!',
     });
   };
 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { coursesApi, assignmentsApi, submissionsApi, Assignment, Submission, CourseDTO } from '@/lib/api';
+import { coursesApi, assignmentsApi, submissionsApi, Assignment, Submission, CourseDTO, enrollmentApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { ClipboardList, Clock, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -23,7 +23,7 @@ const Assignments = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const coursesData = await coursesApi.getAll();
+        const coursesData = await enrollmentApi.getUserEnrolledCourse();
         setCourses(coursesData || []);
         
         const assignmentsMap: Record<string, Assignment[]> = {};
@@ -36,12 +36,12 @@ const Assignments = () => {
               assignmentsMap[course.courseCode] = [];
             }
           })
-        );
+        ); 
         setAssignments(assignmentsMap);
       } catch (error) {
         toast({
-          title: 'Error',
-          description: 'Failed to fetch assignments',
+          title: 'Lỗi',
+          description: 'Không thể lấy bài tập',
           variant: 'destructive',
         });
       } finally {
@@ -63,16 +63,16 @@ const Assignments = () => {
         { content: submissionContent }
       );
       toast({
-        title: 'Submitted!',
-        description: 'Your submission has been received',
+        title: 'Đã nộp!',
+        description: 'Bài nộp của bạn đã được ghi nhận',
       });
       setSubmitDialogOpen(false);
       setSubmissionContent('');
       setSelectedAssignment(null);
     } catch (error: any) {
       toast({
-        title: 'Submission failed',
-        description: error.response?.data?.message || 'Could not submit assignment',
+        title: 'Nộp bài thất bại',
+        description: error.response?.data?.message || 'Không thể nộp bài tập',
         variant: 'destructive',
       });
     } finally {
@@ -85,16 +85,16 @@ const Assignments = () => {
     const due = new Date(dueDate);
     const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    if (diffHours < 0) return { status: 'overdue', label: 'Overdue', variant: 'destructive' as const };
-    if (diffHours < 24) return { status: 'urgent', label: 'Due Soon', variant: 'default' as const };
-    return { status: 'upcoming', label: 'Upcoming', variant: 'secondary' as const };
+    if (diffHours < 0) return { status: 'overdue', label: 'Quá hạn', variant: 'destructive' as const };
+    if (diffHours < 24) return { status: 'urgent', label: 'Sắp đến hạn', variant: 'default' as const };
+    return { status: 'upcoming', label: 'Sắp tới', variant: 'secondary' as const };
   };
 
   const allAssignments = Object.entries(assignments).flatMap(([courseCode, courseAssignments]) =>
     courseAssignments.map(assignment => ({
       ...assignment,
       courseCode,
-      courseName: courses.find(c => c.courseCode === courseCode)?.name || courseCode,
+      courseName: courses.find(c => c.courseCode === courseCode)?.courseName || courseCode,
     }))
   ).sort((a, b) => new Date(a.assignmentDue).getTime() - new Date(b.assignmentDue).getTime());
 
@@ -112,9 +112,9 @@ const Assignments = () => {
     <MainLayout>
       <div className="container py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Assignments</h1>
+          <h1 className="text-3xl font-bold text-foreground">Bài tập</h1>
           <p className="text-muted-foreground mt-1">
-            View and submit your assignments
+            Xem và nộp bài tập của bạn
           </p>
         </div>
 
@@ -122,7 +122,7 @@ const Assignments = () => {
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Assignments</CardTitle>
+              <CardTitle className="text-sm font-medium">Tổng số bài tập</CardTitle>
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -131,7 +131,7 @@ const Assignments = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Due Soon</CardTitle>
+              <CardTitle className="text-sm font-medium">Sắp đến hạn</CardTitle>
               <Clock className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
@@ -142,7 +142,7 @@ const Assignments = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+              <CardTitle className="text-sm font-medium">Quá hạn</CardTitle>
               <AlertCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
@@ -154,14 +154,14 @@ const Assignments = () => {
         </div>
 
         {/* Assignments List */}
-        {allAssignments.length === 0 ? (
+            {allAssignments.length === 0 ? (
           <Card className="py-16">
             <CardContent className="text-center">
               <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No assignments</h3>
-              <p className="text-muted-foreground">
-                You don't have any assignments yet
-              </p>
+                  <h3 className="text-lg font-medium text-foreground mb-2">Không có bài tập</h3>
+                  <p className="text-muted-foreground">
+                    Bạn chưa có bài tập nào
+                  </p>
             </CardContent>
           </Card>
         ) : (
@@ -198,7 +198,7 @@ const Assignments = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
-                        Due: {new Date(assignment.assignmentDue).toLocaleString()}
+                        Hạn nộp: {new Date(assignment.assignmentDue).toLocaleString()}
                       </div>
                       <Dialog open={submitDialogOpen && selectedAssignment?.assignment.id === assignment.id} onOpenChange={(open) => {
                         setSubmitDialogOpen(open);
@@ -211,22 +211,22 @@ const Assignments = () => {
                             onClick={() => setSelectedAssignment({ courseCode: assignment.courseCode, assignment })}
                           >
                             <Send className="h-4 w-4" />
-                            Submit
+                            Nộp bài
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Submit Assignment</DialogTitle>
+                            <DialogTitle>Nộp bài tập</DialogTitle>
                             <DialogDescription>
-                              Submit your work for "{assignment.assignmentName}"
+                              Nộp bài cho "{assignment.assignmentName}"
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                              <Label htmlFor="content">Submission Content</Label>
+                              <Label htmlFor="content">Nội dung bài nộp</Label>
                               <Textarea
                                 id="content"
-                                placeholder="Enter your submission content here..."
+                                placeholder="Nhập nội dung bài nộp tại đây..."
                                 value={submissionContent}
                                 onChange={(e) => setSubmissionContent(e.target.value)}
                                 rows={6}
@@ -242,7 +242,7 @@ const Assignments = () => {
                                 setSelectedAssignment(null);
                               }}
                             >
-                              Cancel
+                              Hủy
                             </Button>
                             <Button onClick={handleSubmit} disabled={isSubmitting || !submissionContent.trim()}>
                               {isSubmitting ? (
@@ -250,7 +250,7 @@ const Assignments = () => {
                               ) : (
                                 <>
                                   <CheckCircle className="h-4 w-4 mr-2" />
-                                  Submit
+                                  Nộp
                                 </>
                               )}
                             </Button>

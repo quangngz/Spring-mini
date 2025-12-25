@@ -34,14 +34,14 @@ const Profile = () => {
     try {
       await usersApi.update(user.username, formData);
       toast({
-        title: 'Profile updated',
-        description: 'Your profile has been saved successfully',
+        title: 'Cập nhật hồ sơ',
+        description: 'Hồ sơ của bạn đã được lưu thành công',
       });
       setIsEditing(false);
     } catch (error: any) {
       toast({
-        title: 'Update failed',
-        description: error.response?.data?.message || 'Could not update profile',
+        title: 'Cập nhật thất bại',
+        description: error.response?.data?.message || 'Không thể cập nhật hồ sơ',
         variant: 'destructive',
       });
     } finally {
@@ -57,9 +57,9 @@ const Profile = () => {
     <MainLayout>
       <div className="container py-8 max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Profile</h1>
+          <h1 className="text-3xl font-bold text-foreground">Hồ sơ</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your account settings and preferences
+            Quản lý cài đặt và tùy chọn tài khoản của bạn
           </p>
         </div>
 
@@ -95,17 +95,17 @@ const Profile = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your personal details</CardDescription>
+              <CardTitle>Thông tin cá nhân</CardTitle>
+              <CardDescription>Cập nhật thông tin cá nhân</CardDescription>
             </div>
             {!isEditing ? (
               <Button variant="outline" onClick={() => setIsEditing(true)}>
-                Edit Profile
+                Chỉnh sửa hồ sơ
               </Button>
             ) : (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
+                  Hủy
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving} className="gap-2">
                   {isSaving ? (
@@ -113,7 +113,7 @@ const Profile = () => {
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save
+                  Lưu
                 </Button>
               </div>
             )}
@@ -123,7 +123,7 @@ const Profile = () => {
               <div className="space-y-2">
                 <Label htmlFor="firstname" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  First Name
+                  Tên
                 </Label>
                 <Input
                   id="firstname"
@@ -136,7 +136,7 @@ const Profile = () => {
               <div className="space-y-2">
                 <Label htmlFor="lastname" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  Last Name
+                  Họ
                 </Label>
                 <Input
                   id="lastname"
@@ -151,7 +151,7 @@ const Profile = () => {
             <div className="space-y-2">
               <Label htmlFor="phoneNum" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                Phone Number
+                Số điện thoại
               </Label>
               <Input
                 id="phoneNum"
@@ -159,14 +159,14 @@ const Profile = () => {
                 value={formData.phoneNum}
                 onChange={handleChange}
                 disabled={!isEditing}
-                placeholder="Enter your phone number"
+                placeholder="Nhập số điện thoại"
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="address" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Address
+                Địa chỉ
               </Label>
               <Input
                 id="address"
@@ -174,7 +174,7 @@ const Profile = () => {
                 value={formData.address}
                 onChange={handleChange}
                 disabled={!isEditing}
-                placeholder="Enter your address"
+                placeholder="Nhập địa chỉ"
               />
             </div>
 
@@ -182,7 +182,7 @@ const Profile = () => {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Date of Birth
+                  Ngày sinh
                 </Label>
                 <Input
                   value={new Date(user.dob).toLocaleDateString()}

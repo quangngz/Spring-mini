@@ -33,8 +33,8 @@ const Users = () => {
       setUsers(data || []);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to fetch users',
+        title: 'Lỗi',
+        description: 'Không thể lấy danh sách người dùng',
         variant: 'destructive',
       });
     } finally {
@@ -57,7 +57,7 @@ const Users = () => {
       setUsers(data || []);
     } catch {
       toast({
-        title: 'Search failed',
+        title: 'Tìm kiếm thất bại',
         variant: 'destructive',
       });
     } finally {
@@ -71,16 +71,16 @@ const Users = () => {
     try {
       await usersApi.create(newUser);
       toast({
-        title: 'User created!',
-        description: `${newUser.username} has been created`,
+        title: 'Tạo người dùng thành công!',
+        description: `${newUser.username} đã được tạo`,
       });
       setIsCreateOpen(false);
       setNewUser({ username: '', password: '', firstname: '', lastname: '' });
       fetchUsers();
     } catch (error: any) {
       toast({
-        title: 'Creation failed',
-        description: error.response?.data?.message || 'Could not create user',
+        title: 'Tạo thất bại',
+        description: error.response?.data?.message || 'Không thể tạo người dùng',
         variant: 'destructive',
       });
     } finally {
@@ -92,14 +92,14 @@ const Users = () => {
     try {
       await usersApi.delete(username);
       toast({
-        title: 'User deleted',
-        description: `${username} has been removed`,
+        title: 'Xóa người dùng',
+        description: `${username} đã được xóa`,
       });
       fetchUsers();
     } catch (error: any) {
       toast({
-        title: 'Deletion failed',
-        description: error.response?.data?.message || 'Could not delete user',
+        title: 'Xóa thất bại',
+        description: error.response?.data?.message || 'Không thể xóa người dùng',
         variant: 'destructive',
       });
     }
@@ -116,9 +116,9 @@ const Users = () => {
       <div className="container py-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+            <h1 className="text-3xl font-bold text-foreground">Quản lý người dùng</h1>
             <p className="text-muted-foreground mt-1">
-              Manage all registered users in the system
+              Quản lý tất cả người dùng đã đăng ký trong hệ thống
             </p>
           </div>
           
@@ -126,21 +126,21 @@ const Users = () => {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <UserPlus className="h-4 w-4" />
-                Add User
+                Thêm người dùng
               </Button>
             </DialogTrigger>
             <DialogContent>
               <form onSubmit={handleCreateUser}>
                 <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
+                  <DialogTitle>Tạo người dùng mới</DialogTitle>
                   <DialogDescription>
-                    Add a new user to the system
+                    Thêm người dùng mới vào hệ thống
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstname">First Name</Label>
+                      <Label htmlFor="firstname">Tên</Label>
                       <Input
                         id="firstname"
                         value={newUser.firstname}
@@ -149,7 +149,7 @@ const Users = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastname">Last Name</Label>
+                      <Label htmlFor="lastname">Họ</Label>
                       <Input
                         id="lastname"
                         value={newUser.lastname}
@@ -159,7 +159,7 @@ const Users = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="username">Tên đăng nhập</Label>
                     <Input
                       id="username"
                       value={newUser.username}
@@ -168,7 +168,7 @@ const Users = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Mật khẩu</Label>
                     <Input
                       id="password"
                       type="password"
@@ -180,10 +180,10 @@ const Users = () => {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                    Cancel
+                    Hủy
                   </Button>
                   <Button type="submit" disabled={isCreating}>
-                    {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create User'}
+                    {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Tạo người dùng'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -195,7 +195,7 @@ const Users = () => {
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <CardTitle className="text-sm font-medium">Tổng số người dùng</CardTitle>
               <UsersIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -204,7 +204,7 @@ const Users = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Admins</CardTitle>
+              <CardTitle className="text-sm font-medium">Quản trị viên</CardTitle>
               <Shield className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -215,7 +215,7 @@ const Users = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Regular Users</CardTitle>
+              <CardTitle className="text-sm font-medium">Người dùng thường</CardTitle>
               <User className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -231,7 +231,7 @@ const Users = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users..."
+              placeholder="Tìm kiếm người dùng..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -239,7 +239,7 @@ const Users = () => {
             />
           </div>
           <Button variant="secondary" onClick={handleSearch}>
-            Search
+            Tìm kiếm
           </Button>
         </div>
 
@@ -254,11 +254,11 @@ const Users = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Roles</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Người dùng</TableHead>
+                    <TableHead>Tên đăng nhập</TableHead>
+                    <TableHead>Vai trò</TableHead>
+                    <TableHead>Số điện thoại</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -273,7 +273,7 @@ const Users = () => {
                           </div>
                           <div>
                             <p className="font-medium">{user.firstname} {user.lastname}</p>
-                            <p className="text-sm text-muted-foreground">{user.address || 'No address'}</p>
+                            <p className="text-sm text-muted-foreground">{user.address || 'Không có địa chỉ'}</p>
                           </div>
                         </div>
                       </TableCell>

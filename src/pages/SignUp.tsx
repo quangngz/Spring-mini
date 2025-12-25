@@ -29,12 +29,12 @@ const SignUp = () => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Mật khẩu không khớp');
       return;
     }
     
     if (formData.password.length < 4) {
-      setError('Password must be at least 4 characters');
+      setError('Mật khẩu phải có ít nhất 4 ký tự');
       return;
     }
 
@@ -61,9 +61,9 @@ const SignUp = () => {
             </div>
           </Link>
           <div>
-            <CardTitle className="text-2xl font-semibold">Create an account</CardTitle>
+            <CardTitle className="text-2xl font-semibold">Tạo tài khoản</CardTitle>
             <CardDescription className="mt-2">
-              Join EduPortal and start learning today
+              Tham gia EduPortal và bắt đầu học ngay hôm nay
             </CardDescription>
           </div>
         </CardHeader>
@@ -72,7 +72,7 @@ const SignUp = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstname">First name</Label>
+                <Label htmlFor="firstname">Tên</Label>
                 <Input
                   id="firstname"
                   name="firstname"
@@ -85,7 +85,7 @@ const SignUp = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastname">Last name</Label>
+                <Label htmlFor="lastname">Họ</Label>
                 <Input
                   id="lastname"
                   name="lastname"
@@ -100,7 +100,7 @@ const SignUp = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Tên đăng nhập</Label>
               <Input
                 id="username"
                 name="username"
@@ -114,12 +114,12 @@ const SignUp = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mật khẩu</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Create a password"
+                placeholder="Tạo mật khẩu"
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -128,12 +128,12 @@ const SignUp = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder="Xác nhận mật khẩu"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
@@ -151,17 +151,17 @@ const SignUp = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Đang tạo tài khoản...
                 </>
               ) : (
-                'Create Account'
+                'Tạo tài khoản'
               )}
             </Button>
             
             <p className="text-sm text-muted-foreground text-center">
-              Already have an account?{' '}
+              Đã có tài khoản?{' '}
               <Link to="/signin" className="text-primary hover:underline font-medium">
-                Sign in
+                Đăng nhập
               </Link>
             </p>
           </CardFooter>
