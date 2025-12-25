@@ -13,13 +13,15 @@ public interface CourseRepository extends CrudRepository<Course, Long> {
     Optional<Course> findByCourseCode(String courseCode);
     List<Course> findByIsPrivate(Boolean isPrivate);
     @Query("""
-        SELECT c FROM Course c 
-        LEFT JOIN c.createdBy u
-        WHERE (:q IS NULL
-              OR LOWER(c.courseName) LIKE LOWER(CONCAT('%', :q, '%'))
-              OR LOWER(c.courseCode) LIKE LOWER(CONCAT('%', :q, '%'))
-              OR LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%')))
-          AND (:isPrivate IS NULL OR c.isPrivate = :isPrivate)
+    SELECT c FROM Course c
+    LEFT JOIN c.createdBy u
+    WHERE (
+        :q IS NULL
+        OR LOWER(c.courseName) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+        OR LOWER(c.courseCode) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+        OR LOWER(u.username) LIKE LOWER(CONCAT('%', CAST(:q AS string), '%'))
+    )
+    AND (:isPrivate IS NULL OR c.isPrivate = :isPrivate)
     """)
     List<Course> search(
                     @Param("q") String q,

@@ -1,5 +1,6 @@
 package com.example.mini_project.entities;
 
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.repositories.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;

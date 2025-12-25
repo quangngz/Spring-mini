@@ -1,6 +1,6 @@
 package com.example.mini_project.repositories;
 
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;

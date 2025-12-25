@@ -1,10 +1,11 @@
 package com.example.mini_project.controllers;
 import com.example.mini_project.entities.ResponseDTO;
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
+import com.example.mini_project.entities.user.UserDTO;
+import com.example.mini_project.entities.user.UserDTOMapper;
 import com.example.mini_project.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Slf4j
 @RestController
@@ -34,15 +36,15 @@ public class UserController {
     }
 
     @GetMapping()
-    public ResponseEntity<ResponseDTO<Iterable<User>>> getUsers() {
+    public ResponseEntity getUsers() {
         Iterable<User> users = userRepository.findAll();
-        return buildResponse(HttpStatus.OK, "Lấy dữ liệu thành công", users);
+        List<UserDTO> result = StreamSupport.stream(users.spliterator(), false).map(UserDTOMapper::toDTO).toList();
+        return buildResponse(HttpStatus.OK, "Lấy dữ liệu thành công", result);
     }
 
 
     @GetMapping("/search")
-    public ResponseEntity<ResponseDTO<List<User>>> searchPeople(
-//            @RequestParam(name="username", required = false) String username,
+    public ResponseEntity searchPeople(
             @RequestParam(name="firstname", required = false) String firstname,
             @RequestParam(name="lastname", required = false) String lastname,
             @RequestParam(name="phoneNum", required = false) String phoneNum,
@@ -56,20 +58,22 @@ public class UserController {
             begin = LocalDate.now().minusYears(age + 1).plusDays(1);
             end = LocalDate.now().minusYears(age);
         }
-        List<User> results = userRepository.searchByCustom(firstname, lastname, address, phoneNum, cityname, begin, end);
-        return buildResponse(HttpStatus.OK, "Tìm kiếm thành công!", results);
+        List<UserDTO> result = userRepository.searchByCustom(firstname, lastname, address, phoneNum, cityname, begin, end)
+                .stream().map(UserDTOMapper::toDTO).toList();
+        return buildResponse(HttpStatus.OK, "Tìm kiếm thành công!", result);
     }
 
     @GetMapping("/{username}")
-    public ResponseEntity<ResponseDTO<User>> getByUsername(@PathVariable("username") String username) {
+    public ResponseEntity getByUsername(@PathVariable("username") String username) {
         return userRepository.findByUsername(username)
-                .map(user -> buildResponse(HttpStatus.OK, "User fetched successfully", user))
+                .map(user -> buildResponse(HttpStatus.OK, "User fetched successfully", UserDTOMapper.toDTO(user)))
                 .orElseGet(() -> buildResponse(HttpStatus.NOT_FOUND, "User not found", null));
     }
 
+
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create")
-    public ResponseEntity<ResponseDTO<User>> createNewUser(@RequestBody @Validated User user, BindingResult bindingResult)
+    public ResponseEntity createNewUser(@RequestBody @Validated User user, BindingResult bindingResult)
     throws  BindException{
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
@@ -83,14 +87,14 @@ public class UserController {
             );
         }
         User saved = userRepository.save(user);
-        return buildResponse(HttpStatus.CREATED, "User created successfully", saved);
+        return buildResponse(HttpStatus.CREATED, "User created successfully", UserDTOMapper.toDTO(saved));
     }
 
     /**
      * Chỉ thay đổi được nếu là admin or là chủ sở hữu thông tin
      */
     @PutMapping("/update/{username}")
-    public ResponseEntity<ResponseDTO<User>> updateUser(@PathVariable("username") String username, @RequestBody User user,
+    public ResponseEntity updateUser(@PathVariable("username") String username, @RequestBody User user,
                                                         Authentication auth, HttpServletRequest request) {
         log.info("Received request URI: {}", request.getRequestURI());
         log.info("Path variable username: {}", username);
@@ -106,7 +110,7 @@ public class UserController {
             updatedUser.setPassword(encoder.encode(user.getPassword()));
         }
         userRepository.save(updatedUser);
-        return buildResponse(HttpStatus.OK, "Thay đổi thông tin thành công!", updatedUser);
+        return buildResponse(HttpStatus.OK, "Thay đổi thông tin thành công!", UserDTOMapper.toDTO(updatedUser));
     }
     // Helper method
     private User getUser(User user, Optional<User> userOptional) {
@@ -156,7 +160,7 @@ public class UserController {
 
     @DeleteMapping("/delete/{username}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<User>> deleteUser(@PathVariable("username") String username, Authentication auth){
+    public ResponseEntity deleteUser(@PathVariable("username") String username, Authentication auth){
         Optional<User> optionalUser = userRepository.findByUsername(username);
         if (optionalUser.isEmpty()) {
             return buildResponse(HttpStatus.BAD_REQUEST, "User không tồn tại để xóa", null);
@@ -170,11 +174,10 @@ public class UserController {
             return buildResponse(HttpStatus.BAD_REQUEST, "Không thể xóa admin role", null);
         }
         userRepository.delete(user);
-        return buildResponse(HttpStatus.OK, "Xóa thành công user", user);
+        return buildResponse(HttpStatus.OK, "Xóa thành công user", UserDTOMapper.toDTO(user));
     }
 
-
-    private <T> ResponseEntity<ResponseDTO<T>> buildResponse(HttpStatus status, String message, T data) {
+    public static <T> ResponseEntity<ResponseDTO<T>> buildResponse(HttpStatus status, String message, T data) {
         return ResponseEntity.status(status).body(new ResponseDTO<>(message, data));
     }
 }

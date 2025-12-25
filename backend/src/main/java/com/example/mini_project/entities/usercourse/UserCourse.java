@@ -1,6 +1,6 @@
 package com.example.mini_project.entities.usercourse;
 
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
 import jakarta.persistence.*;
@@ -14,7 +14,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name="user_course")
+@Table(name="user_course", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_user_course_unique", columnNames = {"user_id", "course_id"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,17 +25,16 @@ import lombok.Setter;
 public class UserCourse {
 
     @EqualsAndHashCode.Include
-    @EmbeddedId
-    private UserCourseId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @ManyToOne
-    @MapsId("userId")
-    @JoinColumn(name="user_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="user_id", nullable = false)
     private User user;
 
-    @ManyToOne
-    @MapsId("courseId")
-    @JoinColumn(name="course_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="course_id", nullable = false)
     private Course course;
 
     @Column(name="enrolled_date")

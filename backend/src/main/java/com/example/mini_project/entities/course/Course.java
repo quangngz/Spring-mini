@@ -1,6 +1,6 @@
 package com.example.mini_project.entities.course;
 
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.entities.assignment.Assignment;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -36,7 +36,13 @@ public class Course {
     @Column(name="end_date")
     private LocalDate endDate;
 
+
+    private String courseDescription;
+
     private Boolean isPrivate;
+
+    private String password;
+
     // Store user_id của người tạo ra course
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="created_user_id", nullable = false)
@@ -47,6 +53,7 @@ public class Course {
     private Set<UserCourse> students = new HashSet<>();
 
     @OneToMany(mappedBy = "course", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @JsonIgnore
     private List<Assignment> assignmentList = new ArrayList<>();
 
 
@@ -60,11 +67,17 @@ public class Course {
         userCourse.setCourse(null);
     }
 
-    public void addAssignment(Assignment assignment) {
+    public void addAssignment(Assignment assignment) throws Exception{
         this.assignmentList.add(assignment);
+        if (totalAssignmentWeight() >= 100.0) {
+            throw new Exception("Add assignment: Tổng phần trăm điểm vượt quá 100%, " +
+                    "edit lại số phần trăm của các assignment để tiếp tục");
+        }
         assignment.setCourse(this);
     }
-
+    public void removeAssignment(Assignment assignment) {
+        this.assignmentList.remove(assignment);
+    }
     public Double totalAssignmentWeight() {
         Double result = 0.0;
         for (Assignment a : assignmentList) {

@@ -2,7 +2,8 @@ package com.example.mini_project.entities.assignment;
 
 
 import com.example.mini_project.entities.course.Course;
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,12 +19,12 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name="assignments")
 public class Assignment {
-    @EmbeddedId
-    private AssignmentId assignmentId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("courseId")
-    @JoinColumn(name = "course_id")
+    @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
     private String assignmentName;

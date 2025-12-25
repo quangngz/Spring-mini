@@ -1,6 +1,6 @@
 package com.example.mini_project.entities.submission;
 
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.assignment.Assignment;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,22 +12,22 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name="submissions")
+@Table(name="submissions",
+        uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_id", "assignment_id"})
+})
+
 public class Submission {
-    @EmbeddedId
-    private SubmissionId submissionId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("userId")
-    @JoinColumn(name="user_id")
+    @JoinColumn(name="user_id", nullable = false)
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("assignmentId")
-    @JoinColumns({
-        @JoinColumn(name = "course_id", referencedColumnName = "course_id"),
-        @JoinColumn(name = "assignment_id", referencedColumnName = "assignment_id")
-    })
+    @JoinColumn(name = "assignment_id", nullable = false)
     private Assignment assignment;
 
     @Column(nullable = false)
@@ -35,12 +35,13 @@ public class Submission {
 
     private Double grade;
 
-    public Submission(User user, Assignment assignment) {
-        this.user = user;
-        this.assignment = assignment;
-        this.submissionId = new SubmissionId(
-                user.getId(),
-                assignment.getAssignmentId()
-        );
-    }
+    // TODO: tương lai sẽ đổi cái này lại thành file
+    private String content;
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private SubmissionStatus status;
 }
+
+

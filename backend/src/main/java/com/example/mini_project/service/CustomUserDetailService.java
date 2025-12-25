@@ -1,6 +1,6 @@
 package com.example.mini_project.service;
 
-import com.example.mini_project.entities.User;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.repositories.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,7 +9,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.Optional;
 
 // cần tạo thêm class này và class UserDetails để có thể lưu trữ thông tin User mỗi khi client log in hoặc sign in
