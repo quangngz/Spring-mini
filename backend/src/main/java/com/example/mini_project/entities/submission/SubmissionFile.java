@@ -1,0 +1,4 @@
+package com.example.mini_project.entities.submission;
+
+public class SubmissionFile {
+}

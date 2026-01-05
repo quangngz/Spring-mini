@@ -6,8 +6,8 @@ import com.example.mini_project.entities.course.CourseDTOMapper;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
+import com.example.mini_project.entities.usercourse.CourseEnrollRequest;
 import com.example.mini_project.entities.usercourse.UserCourse;
-import com.example.mini_project.entities.usercourse.UserCourseDTO;
 import com.example.mini_project.entities.usercourse.UserCourseDTOMapping;
 import com.example.mini_project.exception.CourseNotFoundException;
 import com.example.mini_project.exception.UserNotFoundException;
@@ -56,23 +56,23 @@ public class UserCourseController {
         return userOptional.get();
     }
 
-    public static Course getCourseFromHttp(String courseCode, String action, CourseRepository courseRepository) throws CourseNotFoundException{
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+    public static Course getCourseFromHttp(Long id, String action, CourseRepository courseRepository) throws CourseNotFoundException{
+        Optional<Course> courseOptional = courseRepository.findById(id);
         if (courseOptional.isEmpty()) {
             throw new CourseNotFoundException(action + ": Không tìm thấy course!");
         }
         return courseOptional.get();
     }
     
-    @PostMapping("/enroll/{courseCode}")
+    @PostMapping("/enroll/{id}")
     @Transactional
-    public ResponseEntity enrollUserInCourse(@PathVariable("courseCode") String courseCode, Authentication auth,
+    public ResponseEntity enrollUserInCourse(@PathVariable("id") Long id, Authentication auth,
                                              @RequestBody(required = false) CourseEnrollRequest req)
             throws UserNotFoundException, CourseNotFoundException {
         // Bước 1: Lấy user từ authentication
         User user = getUserFromAuth(auth, "Enroll", this.userRepository);
-        // Bước 2: Lấy Course từ courseCode qua http
-        Course course = getCourseFromHttp(courseCode, "Enroll", this.courseRepository);
+        // Bước 2: Lấy Course từ id qua http
+        Course course = getCourseFromHttp(id, "Enroll", this.courseRepository);
 
         // Bước 3: Kiểm tra tồn tại bằng quan hệ user/course
         if (userCourseRepository.existsByUser_IdAndCourse_Id(user.getId(), course.getId())) {
@@ -96,14 +96,14 @@ public class UserCourseController {
         return buildResponse(HttpStatus.OK, "Enroll: Đăng ký khóa học thành công", UserCourseDTOMapping.toDTO(userCourse));
     }
 
-    @DeleteMapping("/withdraw/{courseCode}")
+    @DeleteMapping("/withdraw/{course-id}")
     @Transactional
-    public ResponseEntity<String> withdrawUserFromCourse(@PathVariable("courseCode") String courseCode, Authentication auth)
+    public ResponseEntity<String> withdrawUserFromCourse(@PathVariable("course-id") Long courseId, Authentication auth)
             throws UserNotFoundException, CourseNotFoundException{
 
         User user = getUserFromAuth(auth, "Withdraw", this.userRepository);
 
-        Course course = getCourseFromHttp(courseCode, "Withdraw", this.courseRepository);
+        Course course = getCourseFromHttp(courseId, "Withdraw", this.courseRepository);
 
         Optional<UserCourse> userCourseOptional = userCourseRepository.findByUser_IdAndCourse_Id(user.getId(), course.getId());
 
@@ -117,11 +117,11 @@ public class UserCourseController {
 
     @PutMapping("/promote-tutor")
     @Transactional
-    public ResponseEntity promoteTutor(@RequestParam("courseCode") String courseCode,
-            @RequestParam("userId") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException{
+    public ResponseEntity promoteTutor(@RequestParam("course-id") Long courseId,
+            @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException{
         // Bước 1: Lấy các dữ liệu liên quan.
         User owner = getUserFromAuth(auth, "Promote Tutor - owner", this.userRepository);
-        Course course = getCourseFromHttp(courseCode, "Promote Tutor", this.courseRepository);
+        Course course = getCourseFromHttp(courseId, "Promote Tutor", this.courseRepository);
 
         // Bước 2: check xem người dùng hiện tại có đủ thẩm quyền để tạo thêm tutor.
         User courseCreator = course.getCreatedBy();
@@ -151,11 +151,11 @@ public class UserCourseController {
 
     @PutMapping("/demote-tutor")
     @Transactional
-    public ResponseEntity demoteTutor(@RequestParam("courseCode") String courseCode,
-            @RequestParam("userId") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException {
+    public ResponseEntity demoteTutor(@RequestParam("course-id") Long courseId,
+            @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException {
         // Bước 1: Lấy các dữ liệu liên quan
         User owner = getUserFromAuth(auth, "Demote Tutor", this.userRepository);
-        Course course = getCourseFromHttp(courseCode, "Demote Tutor", this.courseRepository);
+        Course course = getCourseFromHttp(courseId, "Demote Tutor", this.courseRepository);
         // Bước 2: check xem người dùng hiện tại có đủ thẩm quyền để hạ cấp tutor.
         User courseCreator = course.getCreatedBy();
         if (!courseCreator.getId().equals(owner.getId())) {
@@ -178,14 +178,14 @@ public class UserCourseController {
             "Demote Tutor: Hạ cấp người dùng thành student thành công", UserCourseDTOMapping.toDTO(targetUserCourse));
     }
 
-    @DeleteMapping("/remove-all-student/{courseCode}")
+    @DeleteMapping("/remove-all-student/{course-id}")
     @Transactional
-    public ResponseEntity removeAllStudentsFromCourse(@PathVariable("courseCode") String courseCode,
+    public ResponseEntity removeAllStudentsFromCourse(@PathVariable("course-id") Long courseId,
             Authentication auth) throws UserNotFoundException, CourseNotFoundException {
 
         User user = getUserFromAuth(auth, "Remove All Students", this.userRepository);
 
-        Course course = getCourseFromHttp(courseCode, "Remove All Students", this.courseRepository);
+        Course course = getCourseFromHttp(courseId, "Remove All Students", this.courseRepository);
 
         User courseCreator = course.getCreatedBy();
         if (!courseCreator.getId().equals(user.getId())) {
@@ -193,15 +193,14 @@ public class UserCourseController {
                 "Remove All Students: Chỉ người tạo khóa học mới có thể xóa tất cả sinh viên", null);
         }
 
-        // userCourseRepository.deleteAllByCourse_Id(course.getId());
         course.getStudents().clear();
         return buildResponse(HttpStatus.OK, 
             "Remove All Students: Xóa tất cả sinh viên khỏi khóa học thành công", null);
     }
 
-    @DeleteMapping("/remove-all-courses-for-user/{userId}")
+    @DeleteMapping("/remove-all-courses-for-user/{user-id}")
     @Transactional
-    public ResponseEntity<ResponseDTO<UserCourse>> removeAllCoursesForUser(@PathVariable("userId") Long userId, Authentication auth)
+    public ResponseEntity<ResponseDTO<UserCourse>> removeAllCoursesForUser(@PathVariable("user-id") Long userId, Authentication auth)
             throws UserNotFoundException {
 
         User user = getUserFromAuth(auth, "Remove All Courses", this.userRepository);

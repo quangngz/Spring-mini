@@ -54,18 +54,18 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Lấy dữ liệu course thành công", result));
     }
     
-    @GetMapping("/{coursecode}")
-    public ResponseEntity getCourseByCode(@PathVariable("coursecode") String courseCode) {
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+    @GetMapping("/{course-id}")
+    public ResponseEntity getCourseById(@PathVariable("course-id") Long courseId) {
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO("Không tìm tháy course hợp lệ", null));
         return ResponseEntity.ok(new ResponseDTO("Tìm thấy course thành công!", CourseDTOMapper.toDTO(courseOptional.get())));
     }
 
 
-    @GetMapping("/all-users/{coursecode}")
-    public ResponseEntity getAllUsersInCourse(@PathVariable("coursecode") String courseCode) {
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+    @GetMapping("/all-users/{course-id}")
+    public ResponseEntity getAllUsersInCourse(@PathVariable("course-id") Long courseId) {
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Không tìm thấy course hợp lệ", null));
         Course course = courseOptional.get();
@@ -107,7 +107,7 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ResponseDTO<>("Người dùng không hợp lệ", null));
         }
-        if (courseRepository.findByCourseCode(course.getCourseCode()).isPresent()) {
+        if (courseRepository.findById(course.getId()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ResponseDTO<>("Course code đã tồn tại", null));
         }
@@ -126,16 +126,16 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Tạo thành công course mới", CourseDTOMapper.toDTO(addedCourse)));
     }
 
-    @PutMapping("/update/{coursecode}")
+    @PutMapping("/update/{course-id}")
     @Transactional
-    public ResponseEntity updateCourse(@PathVariable("coursecode") String courseCode,
+    public ResponseEntity updateCourse(@PathVariable("course-id") Long courseId,
                                                           @RequestBody @Validated CourseUpdateRequest req,
                                                           BindingResult bindingResult) throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
 
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Không tìm thấy course hợp lệ", null));
         Course existingCourse = courseOptional.get();
@@ -208,10 +208,10 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Cập nhật course thành công", CourseDTOMapper.toDTO(updatedCourse)));
     }
 
-    @DeleteMapping("/delete/{coursecode}")
+    @DeleteMapping("/delete/{course-id}")
     @Transactional
-    public ResponseEntity deleteCourse(@PathVariable("coursecode") String courseCode, Authentication auth) {
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+    public ResponseEntity deleteCourse(@PathVariable("course-id") Long courseId, Authentication auth) {
+        Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Xóa course: Không tìm thấy course hợp lệ", null));
         Course course = courseOptional.get();

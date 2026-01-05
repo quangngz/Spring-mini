@@ -30,7 +30,7 @@ import java.util.stream.StreamSupport;
 import static com.example.mini_project.controllers.UserController.buildResponse;
 
 @RestController
-@RequestMapping("courses/{courseCode}/assignments")
+@RequestMapping("courses/{id}/assignments")
 public class AssignmentController {
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
@@ -52,8 +52,8 @@ public class AssignmentController {
         }
         return userOptional.get();
     }
-    private Course getCourseFromHttp(String courseCode, String action) throws CourseNotFoundException {
-        Optional<Course> courseOptional = courseRepository.findByCourseCode(courseCode);
+    private Course getCourseFromHttp(Long id, String action) throws CourseNotFoundException {
+        Optional<Course> courseOptional = courseRepository.findById(id);
         if (courseOptional.isEmpty()) {
             throw new CourseNotFoundException(action + ": Không tìm thấy course!");
         }
@@ -61,28 +61,28 @@ public class AssignmentController {
     }
 
     @GetMapping()
-    public ResponseEntity getAllCourseAssignment(@PathVariable("courseCode") String courseCode) {
+    public ResponseEntity getAllCourseAssignment(@PathVariable("id") Long id) {
         List <AssignmentDTO> assignmentDTOList = StreamSupport.stream(this.assignmentRepository
-                        .findByCourse_CourseCode(courseCode).spliterator(), false)
+                        .findByCourse_Id(id).spliterator(), false)
                         .map(AssignmentDTOMapper::toDTO).collect(Collectors.toList());
         return buildResponse(HttpStatus.OK, "Assignment: Lấy dữ liệu assignment thành công", assignmentDTOList);
     }
 
-    private boolean isTutor(String username, String courseCode) {
-        Optional<UserCourse> userCourseOptional = userCourseRepository.findByUser_UsernameAndCourse_CourseCode(username, courseCode);
+    private boolean isTutor(String username, Long id) {
+        Optional<UserCourse> userCourseOptional = userCourseRepository.findByUser_UsernameAndCourse_Id(username, id);
         if (userCourseOptional.isEmpty())
             return false;
         return userCourseOptional.get().getRole().equals(CourseRole.TUTOR);
     }
     @PostMapping("/create")
     @Transactional
-    public ResponseEntity createAssignment(@PathVariable("courseCode") String courseCode,
+    public ResponseEntity createAssignment(@PathVariable("id") Long id,
             @RequestBody @Validated Assignment assignment, Authentication auth)
             throws UserNotFoundException, CourseNotFoundException, Exception {
 
         User user = getUserFromAuth(auth, "Tạo assignment");
-        Course course = getCourseFromHttp(courseCode, "Tạo assignment");
-        if (!isTutor(user.getUsername(), course.getCourseCode())) {
+        Course course = getCourseFromHttp(id, "Tạo assignment");
+        if (!isTutor(user.getUsername(), course.getId())) {
             return buildResponse(HttpStatus.FORBIDDEN,
                     "Tạo assignment: Không phải tutor hoặc không tìm thấy bạn trong hệ thống!", null);
         }
@@ -95,12 +95,12 @@ public class AssignmentController {
 
     @PutMapping("/edit")
     @Transactional
-    public ResponseEntity editAssignment(@PathVariable("courseCode") String courseCode,
+    public ResponseEntity editAssignment(@PathVariable("id") Long id,
             @RequestBody Assignment newAssignment, Authentication auth)
             throws UserNotFoundException, CourseNotFoundException, Exception{
-        Course course = getCourseFromHttp(courseCode, "Edit assignment");
+        Course course = getCourseFromHttp(id, "Edit assignment");
         User user = getUserFromAuth(auth, "Edit assignment");
-        if (!isTutor(user.getUsername(), course.getCourseCode())) {
+        if (!isTutor(user.getUsername(), course.getId())) {
            return buildResponse(HttpStatus.FORBIDDEN,
                    "Edit assignment: Không phải tutor hoặc không tìm thấy bạn trong hệ thống!", null);
        }
@@ -129,11 +129,11 @@ public class AssignmentController {
 
     @DeleteMapping("/delete")
     @Transactional
-    public ResponseEntity deleteAssignment(@PathVariable("courseCode") String courseCode,
+    public ResponseEntity deleteAssignment(@PathVariable("id") Long id,
             @RequestBody Assignment newAssignment, Authentication auth) throws UserNotFoundException, CourseNotFoundException{
-        Course course = getCourseFromHttp(courseCode, "Xóa assignment");
+        Course course = getCourseFromHttp(id, "Xóa assignment");
         User user = getUserFromAuth(auth, "Xóa assignment");
-        if (!isTutor(user.getUsername(), course.getCourseCode())) {
+        if (!isTutor(user.getUsername(), course.getId())) {
             return buildResponse(HttpStatus.FORBIDDEN,
                     "Xóa assignment: Không phải tutor hoặc không tìm thấy bạn trong hệ thống!", null);
         }
