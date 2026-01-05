@@ -13,8 +13,7 @@ public interface UserCourseRepository extends CrudRepository<UserCourse, Long> {
     boolean existsByUser_IdAndCourse_Id(Long userId, Long courseId);
     Optional<UserCourse> findByUser_IdAndCourse_Id(Long userId, Long courseId);
 
-    boolean existsByUser_UsernameAndCourse_CourseCode(String username, String courseCode);
-    Optional<UserCourse> findByUser_UsernameAndCourse_CourseCode(String username, String courseCode);
+    Optional<UserCourse> findByUser_UsernameAndCourse_Id(String username, Long courseId);
     // Convention: Sử dụng findAll khi fetch từ 1 field one to many
     List<UserCourse> findAllByUser_Id(Long id);
 }

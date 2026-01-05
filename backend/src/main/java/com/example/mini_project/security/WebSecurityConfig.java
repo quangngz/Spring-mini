@@ -20,6 +20,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration
 @EnableMethodSecurity
 public class WebSecurityConfig {
@@ -56,6 +58,7 @@ public class WebSecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/s3/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(headers ->
@@ -68,8 +71,11 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOrigin("http://localhost:3001"); // React dev server
-        config.addAllowedMethod("*");
+
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:3001",
+                "http://192.168.1.60:3001/"
+        ));        config.addAllowedMethod("*");
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
 

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface CourseRepository extends CrudRepository<Course, Long> {
-    Optional<Course> findByCourseCode(String courseCode);
+    Optional<Course> findById(Long id);
     List<Course> findByIsPrivate(Boolean isPrivate);
     @Query("""
     SELECT c FROM Course c

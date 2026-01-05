@@ -10,7 +10,7 @@ import java.util.List;
 public interface SubmissionRepository extends CrudRepository<Submission, Long> {
 
 	// Derived query using nested property traversal
-	List<Submission> findByAssignment_Course_CourseCode(String courseCode);
+	List<Submission> findByAssignment_Course_Id(Long courseId);
 
     List<Submission> findByAssignment_Id(Long id);
 	boolean existsByUser_IdAndAssignment_Id(Long userId, Long assignmentId);

@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Setter
 @Getter
@@ -29,19 +31,25 @@ public class Submission {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignment_id", nullable = false)
     private Assignment assignment;
-
-    @Column(nullable = false)
-    private LocalDateTime submissionTime;
-
     private Double grade;
 
-    // TODO: tương lai sẽ đổi cái này lại thành file
-    private String content;
+    @OneToMany(
+            mappedBy = "submission",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<SubmissionFile> files = new ArrayList<>();
 
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SubmissionStatus status;
+
+
+    public void addFile(SubmissionFile file) {
+        files.add(file);
+        file.setSubmission(this);
+    }
 }
 
 

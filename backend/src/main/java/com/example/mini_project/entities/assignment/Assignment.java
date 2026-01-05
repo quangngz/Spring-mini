@@ -33,8 +33,16 @@ public class Assignment {
 
     private Double assignmentWeight;
 
+
+    private String objectKey; // Lấy từ S3.
+    private ContentType contentType;
     // Store user_id của người tạo ra assignment
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="assignment_created_by", nullable = false)
     private User createdBy;
+}
+
+enum ContentType {
+    TXT,
+    PDF
 }

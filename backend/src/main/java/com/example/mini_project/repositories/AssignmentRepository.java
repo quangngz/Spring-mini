@@ -6,5 +6,5 @@ import org.springframework.data.repository.CrudRepository;
 import java.util.List;
 
 public interface AssignmentRepository extends CrudRepository<Assignment, Long> {
-    public List<Assignment> findByCourse_CourseCode(String CourseCode);
+    public List<Assignment> findByCourse_Id(Long id);
 }

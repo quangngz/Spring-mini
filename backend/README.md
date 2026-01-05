@@ -1,5 +1,7 @@
 # Spring-mini Backend API
 
+Use Java 17 and SDK 17
+
 Base URL: http://localhost:8080
 
 All JSON responses use a common wrapper:
