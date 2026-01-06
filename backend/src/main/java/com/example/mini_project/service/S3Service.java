@@ -45,13 +45,11 @@ public class S3Service {
 
 
 
-    public byte[] downloadFile(String key) {
-        ResponseBytes<GetObjectResponse> objectAsBytes =
-                s3Client.getObjectAsBytes(GetObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(key)
-                        .build());
-        return objectAsBytes.asByteArray();
+    public InputStream downloadFile(String key) {
+        return s3Client.getObject(GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build());
     }
 
 

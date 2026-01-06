@@ -66,7 +66,8 @@ export interface CourseCreateRequest {
 // Align with backend CourseUpdateRequest(@Valid Course course, String oldPassword, String password1, String password2)
 export interface CourseUpdateRequest {
   course: {
-    courseCode: string;
+    id?: number;
+    courseCode?: string;
     courseName?: string;
     isPrivate?: boolean;
     endDate?: string;
@@ -109,12 +110,13 @@ export interface Submission {
   username: string;
   content: string;
   submissionTime: string;
-  status: 'SUBMITTED' | 'LATE';
+  status: 'SUBMITTED' | 'LATE' | 'GRADED';
   grade?: number;
 }
 
 export interface SubmissionCreateRequest {
-  content: string;
+  content?: string;
+  files?: File[];
 }
 
 // Create axios instance
@@ -181,6 +183,7 @@ const normalizeAssignment = (raw: any, fallbackCourseCode?: string): Assignment 
   };
 };
 
+
 // Auth API
 export const authApi = {
   signIn: async (data: SignInRequest): Promise<string> => {
@@ -235,15 +238,15 @@ export const coursesApi = {
       .filter((c: CourseDTO) => !!c.courseCode);
   },
 
-  getByCode: async (courseCode: string): Promise<CourseDTO> => {
-    const response: AxiosResponse<ApiResponse<any>> = await api.get(`/courses/${courseCode}`);
+  getById: async (courseId: number): Promise<CourseDTO> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.get(`/courses/${courseId}`);
     return normalizeCourse(response.data.data);
   },
 
-  getEnrollments: async (courseCode: string): Promise<UserCourse[]> => {
-    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/all-users/${courseCode}`);
+  getEnrollments: async (courseId: number): Promise<UserCourse[]> => {
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/all-users/${courseId}`);
     const rows = response.data.data || [];
-    return rows.map((r: any) => normalizeUserCourse(r, courseCode));
+    return rows.map((r: any) => normalizeUserCourse(r));
   },
 
   search: async (q?: string, isPrivate?: boolean | null): Promise<CourseDTO[]> => {
@@ -262,8 +265,8 @@ export const coursesApi = {
   },
 
   update: async (
-    courseCode: string,
-    data: Partial<CourseCreateRequest>,
+    courseId: number,
+    data: Partial<CourseCreateRequest & { courseCode?: string }>,
     oldPassword?: string,
     password1?: string,
     password2?: string
@@ -271,7 +274,8 @@ export const coursesApi = {
     // Build request body matching backend record structure
     const body: CourseUpdateRequest = {
       course: {
-        courseCode,
+        id: courseId,
+        courseCode: data.courseCode,
         courseName: data.courseName,
         isPrivate: data.isPrivate,
         endDate: data.endDate,
@@ -282,46 +286,46 @@ export const coursesApi = {
       password2,
     };
 
-    const response: AxiosResponse<ApiResponse<any>> = await api.put(`/courses/update/${courseCode}`, body);
+    const response: AxiosResponse<ApiResponse<any>> = await api.put(`/courses/update/${courseId}`, body);
     return normalizeCourse(response.data.data);
   },
 
-  delete: async (courseCode: string): Promise<void> => {
-    await api.delete(`/courses/delete/${courseCode}`);
+  delete: async (courseId: number): Promise<void> => {
+    await api.delete(`/courses/delete/${courseId}`);
   },
 };
 
 // Enrollment API
 export const enrollmentApi = {
-  enroll: async (courseCode: string, password?: string): Promise<UserCourse> => {
-    const response: AxiosResponse<ApiResponse<any>> = await api.post(`/users-courses/enroll/${courseCode}`, password ? { password } : {});
-    return normalizeUserCourse(response.data.data, courseCode);
+  enroll: async (courseId: number, password?: string): Promise<UserCourse> => {
+    const response: AxiosResponse<ApiResponse<any>> = await api.post(`/users-courses/enroll/${courseId}`, password ? { password } : {});
+    return normalizeUserCourse(response.data.data);
   },
 
-  withdraw: async (courseCode: string): Promise<void> => {
-    await api.delete(`/users-courses/withdraw/${courseCode}`);
+  withdraw: async (courseId: number): Promise<void> => {
+    await api.delete(`/users-courses/withdraw/${courseId}`);
   },
 
-  promoteTutor: async (courseCode: string, userId: number): Promise<UserCourse> => {
+  promoteTutor: async (courseId: number, userId: number): Promise<UserCourse> => {
     // Explicitly include query parameters in URL to ensure backend @RequestParam binding
     const response: AxiosResponse<ApiResponse<any>> = await api.put(
-      `/users-courses/promote-tutor?courseCode=${encodeURIComponent(courseCode)}&userId=${encodeURIComponent(String(userId))}`,
+      `/users-courses/promote-tutor?course-id=${encodeURIComponent(courseId)}&user-id=${encodeURIComponent(String(userId))}`,
       null
     );
-    return normalizeUserCourse(response.data.data, courseCode);
+    return normalizeUserCourse(response.data.data);
   },
 
-  demoteTutor: async (courseCode: string, userId: number): Promise<UserCourse> => {
+  demoteTutor: async (courseId: number, userId: number): Promise<UserCourse> => {
     // Explicitly include query parameters in URL to ensure backend @RequestParam binding
     const response: AxiosResponse<ApiResponse<any>> = await api.put(
-      `/users-courses/demote-tutor?courseCode=${encodeURIComponent(courseCode)}&userId=${encodeURIComponent(String(userId))}`,
+      `/users-courses/demote-tutor?course-id=${encodeURIComponent(courseId)}&user-id=${encodeURIComponent(String(userId))}`,
       null
     );
-    return normalizeUserCourse(response.data.data, courseCode);
+    return normalizeUserCourse(response.data.data);
   },
-
-  removeAllStudents: async (courseCode: string): Promise<void> => {
-    await api.delete(`/users-courses/remove-all-student/${courseCode}`);
+  
+  removeAllStudents: async (courseId: number): Promise<void> => {
+    await api.delete(`/users-courses/remove-all-student/${courseId}`);
   },
 
   removeAllCoursesForUser: async (userId: number): Promise<void> => {
@@ -336,69 +340,104 @@ export const enrollmentApi = {
 
 // Assignments API
 export const assignmentsApi = {
-  getAll: async (courseCode: string): Promise<Assignment[]> => {
-    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/${courseCode}/assignments`);
-    return (response.data.data || []).map((a: any) => normalizeAssignment(a, courseCode));
+  getAll: async (courseId: number): Promise<Assignment[]> => {
+    const response: AxiosResponse<ApiResponse<any[]>> = await api.get(`/courses/${courseId}/assignments`);
+    return (response.data.data || []).map((a: any) => normalizeAssignment(a));
   },
 
-  create: async (courseCode: string, data: AssignmentCreateRequest): Promise<Assignment> => {
+  create: async (courseId: number, data: AssignmentCreateRequest): Promise<Assignment> => {
     const response: AxiosResponse<ApiResponse<any>> = await api.post(
-      `/courses/${courseCode}/assignments/create`,
+      `/courses/${courseId}/assignments/create`,
       data
     );
-    return normalizeAssignment(response.data.data, courseCode);
+    return normalizeAssignment(response.data.data);
   },
 
-  update: async (courseCode: string, data: Partial<Assignment> & { id: number }): Promise<Assignment> => {
+  update: async (courseId: number, data: Partial<Assignment> & { id: number }): Promise<Assignment> => {
     const response: AxiosResponse<ApiResponse<any>> = await api.put(
-      `/courses/${courseCode}/assignments/edit`,
+      `/courses/${courseId}/assignments/edit`,
       data
     );
-    return normalizeAssignment(response.data.data, courseCode);
+    return normalizeAssignment(response.data.data);
   },
 
-  delete: async (courseCode: string, assignmentId: number): Promise<void> => {
-    await api.delete(`/courses/${courseCode}/assignments/delete`, { data: { id: assignmentId } });
+  delete: async (courseId: number, assignmentId: number): Promise<void> => {
+    await api.delete(`/courses/${courseId}/assignments/delete`, { data: { id: assignmentId } });
   },
 };
 
 // Submissions API
 export const submissionsApi = {
-  getByCourse: async (courseCode: string): Promise<Submission[]> => {
-    const response: AxiosResponse<ApiResponse<Submission[]>> = await api.get(`/submissions/${courseCode}`);
-    return response.data.data;
-  },
-
-  getByAssignment: async (assignmentId: number): Promise<Submission[]> => {
+  getByAssignment: async (courseId: number, assignmentId: number): Promise<Submission[]> => {
     const response: AxiosResponse<ApiResponse<Submission[]>> = await api.get(
-      `/submissions`,  {
-      params: { "assignmentId": assignmentId },
-    });
-    return response.data.data;
-  },
-
-  submit: async (courseCode: string, assignmentId: number, data: SubmissionCreateRequest): Promise<Submission> => {
-    const response: AxiosResponse<ApiResponse<Submission>> = await api.post(
-      `/submissions/submit/${courseCode}/${assignmentId}`,
-      data
+      `/courses/${courseId}/assignments/${assignmentId}/submissions`
     );
     return response.data.data;
   },
 
-  grade: async (submissionId: number, grade: number): Promise<Submission> => {
+  submit: async (courseId: number, assignmentId: number, data: SubmissionCreateRequest): Promise<Submission> => {
+    const formData = new FormData();
+    if (data.content) {
+      formData.append('content', data.content);
+    }
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((file) => {
+        formData.append('file', file);
+      });
+    }
+    const response: AxiosResponse<ApiResponse<Submission>> = await api.post(
+      `/courses/${courseId}/assignments/${assignmentId}/submissions/submit`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.data;
+  },
+
+  delete: async (courseId: number, assignmentId: number, submissionId: number): Promise<void> => {
+    await api.delete(`/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/delete`);
+  },
+
+  grade: async (courseId: number, assignmentId: number, submissionId: number, grade: number): Promise<Submission> => {
     const response: AxiosResponse<ApiResponse<Submission>> = await api.put(
-      `/submissions/grade/${submissionId}`,
+      `/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/grade`,
       null,
       { params: { grade } }
     );
     return response.data.data;
   },
 
-  edit: async (submissionId: number, content: string): Promise<Submission> => {
-    const response: AxiosResponse<ApiResponse<Submission>> = await api.put(`/submissions/edit/${submissionId}`, {
-      content,
-    });
+  edit: async (courseId: number, assignmentId: number, submissionId: number, data: SubmissionCreateRequest): Promise<Submission> => {
+    const formData = new FormData();
+    if (data.content) {
+      formData.append('content', data.content);
+    }
+    if (data.files && data.files.length > 0) {
+      data.files.forEach((file) => {
+        formData.append('file', file);
+      });
+    }
+    const response: AxiosResponse<ApiResponse<Submission>> = await api.put(
+      `/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/edit`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
     return response.data.data;
+  },
+
+  getPdf: async (courseId: number, assignmentId: number, submissionId: number, index: number): Promise<Blob> => {
+    const response = await api.get(`/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/pdf`, {
+      params: { index },
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };
 

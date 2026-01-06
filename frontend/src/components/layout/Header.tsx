@@ -29,12 +29,12 @@ export const Header = () => {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
             <GraduationCap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-foreground">EduPortal</span>
+          {/* <span className="text-xl font-semibold text-foreground"></span> */}
         </Link>
 
         {isAuthenticated ? (
-          <div className="flex items-center gap-6">
-            <nav className="hidden md:flex items-center gap-1">
+          <div className="flex items-center gap-4">
+            <nav className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto md:overflow-visible">
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <BookOpen className="h-4 w-4" />

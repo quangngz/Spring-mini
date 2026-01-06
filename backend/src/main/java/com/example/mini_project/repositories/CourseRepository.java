@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public interface CourseRepository extends CrudRepository<Course, Long> {
     Optional<Course> findById(Long id);
+    Optional<Course> findByCourseCode(String code);
     List<Course> findByIsPrivate(Boolean isPrivate);
     @Query("""
     SELECT c FROM Course c

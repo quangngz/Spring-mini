@@ -10,6 +10,10 @@ import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.repositories.CourseRepository;
 import com.example.mini_project.repositories.UserCourseRepository;
 import com.example.mini_project.repositories.UserRepository;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,9 +93,9 @@ public class CourseController {
 
     @PostMapping("/create")
     @Transactional
-    public ResponseEntity addCourse(@RequestBody @Validated Course course,
-                                                         BindingResult bindingResult, 
-                                                        Authentication auth) throws BindException {
+    public ResponseEntity addCourse(@RequestBody CourseCreateDTO request,
+                                    BindingResult bindingResult,
+                                    Authentication auth) throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
@@ -107,15 +111,20 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ResponseDTO<>("Người dùng không hợp lệ", null));
         }
-        if (courseRepository.findById(course.getId()).isPresent()) {
+        if (courseRepository.findByCourseCode(request.getCourseCode()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ResponseDTO<>("Course code đã tồn tại", null));
         }
 
         User user = userOptional.get();
+        Course course = new Course();
+        course.setCourseCode(request.getCourseCode());
+        course.setCourseName(request.getCourseName());
+        course.setIsPrivate(request.getIsPrivate());
+        course.setEndDate(request.getEndDate());
 
-        if (course.getIsPrivate()) {
-            course.setPassword(encoder.encode(course.getPassword()));
+        if (request.getIsPrivate()) {
+            course.setPassword(encoder.encode(request.getPassword()));
         }
         course.setCreatedBy(user);
         Course addedCourse = courseRepository.save(course);
@@ -129,8 +138,8 @@ public class CourseController {
     @PutMapping("/update/{course-id}")
     @Transactional
     public ResponseEntity updateCourse(@PathVariable("course-id") Long courseId,
-                                                          @RequestBody @Validated CourseUpdateRequest req,
-                                                          BindingResult bindingResult) throws BindException {
+                                      @RequestBody @Validated CourseUpdateRequest req,
+                                      BindingResult bindingResult) throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
@@ -235,3 +244,15 @@ public class CourseController {
 
 }
 
+
+@Setter
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+class CourseCreateDTO {
+    private String courseCode;
+    private String courseName;
+    private LocalDate endDate;
+    private Boolean isPrivate;
+    private String password;
+}

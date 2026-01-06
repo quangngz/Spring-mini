@@ -5,9 +5,7 @@ public class SubmissionMapper {
         SubmissionDTO dto = new SubmissionDTO();
         dto.setId(submission.getId());
         dto.setUsername(submission.getUser().getUsername());
-        dto.setSubmissionTime(submission.getSubmissionTime());
         dto.setGrade(submission.getGrade());
-        dto.setContent(submission.getContent());
         dto.setStatus(submission.getStatus());
         return dto;
     }

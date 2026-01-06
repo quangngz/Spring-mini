@@ -21,11 +21,11 @@ public class S3Controller {
         return ResponseEntity.ok("File uploaded successfully!");
     }
 
-    @GetMapping("/download/{filename}")
-    public ResponseEntity<byte[]> download(@PathVariable String filename) {
-        byte[] data = s3Service.downloadFile(filename);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                .body(data);
-    }
+//    @GetMapping("/download/{filename}")
+//    public ResponseEntity<byte[]> download(@PathVariable String filename) {
+//        byte[] data = s3Service.downloadFile(filename);
+//        return ResponseEntity.ok()
+//                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+//                .body(data);
+//    }
 }

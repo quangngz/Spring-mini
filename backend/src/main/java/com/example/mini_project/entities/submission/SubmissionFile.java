@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
 public class SubmissionFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,9 +38,6 @@ public class SubmissionFile {
 
     @Column(nullable = false)
     private Long fileSize;
-
-    @Column(nullable = false)
-    private Integer version;
 
     @Column(nullable = false)
     private LocalDateTime uploadedAt;
