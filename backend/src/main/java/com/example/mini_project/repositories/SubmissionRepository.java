@@ -14,4 +14,5 @@ public interface SubmissionRepository extends CrudRepository<Submission, Long> {
 
     List<Submission> findByAssignment_Id(Long id);
 	boolean existsByUser_IdAndAssignment_Id(Long userId, Long assignmentId);
+	void deleteByAssignment_Id(Long assignmentId);
 }

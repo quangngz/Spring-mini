@@ -2,6 +2,7 @@ package com.example.mini_project.repositories;
 
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.usercourse.UserCourse;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;

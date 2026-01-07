@@ -1,22 +1,25 @@
 package com.example.mini_project.entities.assignment;
 
-
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AssignmentDTO {
-    private Long id;
+public class AssignmentCreateDTO {
+
+    @NotNull
     private String assignmentName;
-    private String assignmentDue;
+
+    @NotNull
+    private LocalDateTime assignmentDue;
+
+    @NotNull
     private Double assignmentWeight;
-    private String courseCode;
-    private String createdBy;
 }
-
-

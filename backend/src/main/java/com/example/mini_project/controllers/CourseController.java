@@ -1,19 +1,12 @@
 package com.example.mini_project.controllers;
 
 import com.example.mini_project.entities.ResponseDTO;
-import com.example.mini_project.entities.course.CourseDTO;
-import com.example.mini_project.entities.course.CourseDTOMapper;
-import com.example.mini_project.entities.course.CourseRole;
+import com.example.mini_project.entities.course.*;
 import com.example.mini_project.entities.user.User;
-import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.repositories.CourseRepository;
 import com.example.mini_project.repositories.UserCourseRepository;
 import com.example.mini_project.repositories.UserRepository;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,8 +45,8 @@ public class CourseController {
     @GetMapping()
     public ResponseEntity getAllCourse() {
         Iterable<Course> courses = courseRepository.findAll();
-        List<CourseDTO> result = StreamSupport.stream(courses.spliterator(), false)
-                .map(CourseDTOMapper::toDTO)
+        List<CourseResponseDTO> result = StreamSupport.stream(courses.spliterator(), false)
+                .map(CourseResponseDTOMapper::toDTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(new ResponseDTO<>("Lấy dữ liệu course thành công", result));
     }
@@ -63,7 +56,7 @@ public class CourseController {
         Optional<Course> courseOptional = courseRepository.findById(courseId);
         if (courseOptional.isEmpty()) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO("Không tìm tháy course hợp lệ", null));
-        return ResponseEntity.ok(new ResponseDTO("Tìm thấy course thành công!", CourseDTOMapper.toDTO(courseOptional.get())));
+        return ResponseEntity.ok(new ResponseDTO("Tìm thấy course thành công!", CourseResponseDTOMapper.toDTO(courseOptional.get())));
     }
 
 
@@ -88,7 +81,7 @@ public class CourseController {
                 new ResponseDTO<>("Không có course phù hợp mô tả", null));
         int n = resultList.size();
         return ResponseEntity.ok(new ResponseDTO<>("Tìm kiếm được " + n + " dữ liệu!",
-                resultList.stream().map(CourseDTOMapper::toDTO).toList()));
+                resultList.stream().map(CourseResponseDTOMapper::toDTO).toList()));
     }
 
     @PostMapping("/create")
@@ -132,7 +125,7 @@ public class CourseController {
         UserCourse makeTutor = new UserCourse(null, user, addedCourse, LocalDate.now(), CourseRole.TUTOR);
         userCourseRepository.save(makeTutor);
 
-        return ResponseEntity.ok(new ResponseDTO<>("Tạo thành công course mới", CourseDTOMapper.toDTO(addedCourse)));
+        return ResponseEntity.ok(new ResponseDTO<>("Tạo thành công course mới", CourseResponseDTOMapper.toDTO(addedCourse)));
     }
 
     @PutMapping("/update/{course-id}")
@@ -169,7 +162,9 @@ public class CourseController {
 
         // Chưa từng là private và không chỉnh lại thành private thì không set được mật khẩu
         if (!wasPrivate && !willBePrivate &&
-                (req.password1() != null || req.password2() != null || req.oldPassword() != null)) {
+                ((req.password1() != null && !req.password1().isEmpty())
+                  || (req.password2() != null && !req.password2().isEmpty()) 
+                  || (req.oldPassword() != null && !req.oldPassword().isEmpty()))) {
             return buildResponse(
                     HttpStatus.BAD_REQUEST,
                     "Course công khai không thể đổi mật khẩu",
@@ -214,7 +209,7 @@ public class CourseController {
 
 
         Course updatedCourse = courseRepository.save(existingCourse);
-        return ResponseEntity.ok(new ResponseDTO<>("Cập nhật course thành công", CourseDTOMapper.toDTO(updatedCourse)));
+        return ResponseEntity.ok(new ResponseDTO<>("Cập nhật course thành công", CourseResponseDTOMapper.toDTO(updatedCourse)));
     }
 
     @DeleteMapping("/delete/{course-id}")
@@ -239,20 +234,9 @@ public class CourseController {
 
         courseRepository.delete(courseOptional.get());
         return ResponseEntity.ok(new ResponseDTO<>("Xóa course thành công",
-                CourseDTOMapper.toDTO(courseOptional.get())));
+                CourseResponseDTOMapper.toDTO(courseOptional.get())));
     }
 
 }
 
 
-@Setter
-@Getter
-@AllArgsConstructor
-@NoArgsConstructor
-class CourseCreateDTO {
-    private String courseCode;
-    private String courseName;
-    private LocalDate endDate;
-    private Boolean isPrivate;
-    private String password;
-}

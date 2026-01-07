@@ -1,8 +1,8 @@
 package com.example.mini_project.entities.assignment;
 
-public class AssignmentDTOMapper {
-    public static AssignmentDTO toDTO(Assignment assignment) {
-        AssignmentDTO result = new AssignmentDTO();
+public class AssignmentResponseDTOMapper {
+    public static AssignmentResponseDTO toDTO(Assignment assignment) {
+        AssignmentResponseDTO result = new AssignmentResponseDTO();
         result.setId(assignment.getId());
         result.setAssignmentName(assignment.getAssignmentName());
         result.setAssignmentDue(assignment.getAssignmentDue().toString());

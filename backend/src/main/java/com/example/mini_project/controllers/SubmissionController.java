@@ -1,5 +1,6 @@
 package com.example.mini_project.controllers;
 
+import com.example.mini_project.entities.file.SubmissionFile;
 import com.example.mini_project.entities.submission.*;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.assignment.Assignment;
@@ -8,7 +9,9 @@ import com.example.mini_project.entities.course.CourseRole;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.repositories.*;
 import com.example.mini_project.service.S3Service;
-import org.springframework.core.io.InputStreamResource;
+import com.example.mini_project.service.UploadPdfService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,6 +39,9 @@ public class SubmissionController {
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
     private final S3Service s3Service;
+
+    @Autowired
+    private UploadPdfService uploadPdfService;
     public SubmissionController(UserCourseRepository userCourseRepository,
                                 AssignmentRepository assignmentRepository,
                                 SubmissionRepository submissionRepository,
@@ -46,13 +51,6 @@ public class SubmissionController {
         this.submissionRepository = submissionRepository;
         this.s3Service = s3Service;
     }
-
-//    @GetMapping()
-//    public ResponseEntity<?> getAllCourseSubmission(@PathVariable("course-id") Long courseId) {
-//        List<SubmissionDTO> submissionDTOList = this.submissionRepository.findByAssignment_Course_Id(courseId)
-//                .stream().map(SubmissionMapper::toDTO).toList();
-//        return buildResponse(HttpStatus.OK, "Lấy submission theo courseId thành công", submissionDTOList);
-//    }
 
     @GetMapping()
     public ResponseEntity<?> getSubmissionByAssignment(@PathVariable("assignment-id") Long assignmentId) {
@@ -69,28 +67,26 @@ public class SubmissionController {
     @GetMapping("/{submissionId}/pdf")
     public ResponseEntity<?> getSubmissionPdf(@PathVariable Long submissionId,
                                               @RequestParam(value = "index", required = false) Integer index) {
-        Submission submission;
-        try {
-            submission = extractSubmission(submissionId);
-        } catch (RuntimeException e) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Không tìm thấy submission pdf", null);
+
+        Submission submission = extractSubmission(submissionId);
+        SubmissionFile file;
+        if (index != null && index <= submission.getFiles().size() - 1) {
+            file = submission.getFiles().get(index);
+        } else {
+            // Cái này sẽ được chạy nhiều hơn, và add submission nhiều hơn nên dùng linked list tốt hơn.
+            file = submission.getFiles().get(0);
         }
 
-        List<SubmissionFile> files = submission.getFiles();
-        if (index == null) index = files.size() - 1;
-        if (files.size() <= index) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Index ngoài tầm của submission files", null);
-        }
-        InputStream pdfStream = s3Service.downloadFile(files.get(index).getS3Key());
-        InputStreamResource resource = new InputStreamResource(pdfStream);
+        byte[] pdfBytes =
+                uploadPdfService.loadPdfBytes(file.getS3Key());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + files.get(index).getOriginalFilename() + "\""
+                        "inline; filename=\"" + file.getOriginalFilename() + "\""
                 )
-                .body(resource);
+                .body(new ByteArrayResource(pdfBytes));
     }
 
     @Transactional
@@ -133,8 +129,8 @@ public class SubmissionController {
         try {
             for (MultipartFile file : files) {
                 if (file != null && !file.isEmpty()) {
-                    String s3Key = generateSubmissionFileKey(submission, file);
-                    SubmissionFile submissionFile = buildSubmissionFile(s3Key, submission, file);
+                    String s3Key = SubmissionFile.generateS3Key(submission, file);
+                    SubmissionFile submissionFile = SubmissionFile.buildSubmissionFile(s3Service, s3Key, submission, file);
                     submission.addFile(submissionFile);
                 }
             }
@@ -161,7 +157,7 @@ public class SubmissionController {
             return buildResponse(HttpStatus.BAD_REQUEST, "Delete Submission: " + e.getMessage(), null);
         }
 
-        submission.getFiles().forEach(file -> s3Service.deleteObject(file.getS3Key()));
+        submission.getFiles().forEach(file -> uploadPdfService.deleteFile(file.getS3Key()));
         submissionRepository.delete(submission);
         return buildResponse(HttpStatus.OK, "Delete Submission: Xóa submission thành công",
                 SubmissionMapper.toDTO(submission));
@@ -226,8 +222,8 @@ public class SubmissionController {
         try {
             for (MultipartFile file : files) {
                 if (file != null && !file.isEmpty()) {
-                    String s3Key = generateSubmissionFileKey(submission, file);
-                    SubmissionFile submissionFile = buildSubmissionFile(s3Key, submission, file);
+                    String s3Key = SubmissionFile.generateS3Key(submission, file);
+                    SubmissionFile submissionFile = SubmissionFile.buildSubmissionFile(s3Service, s3Key, submission, file);
                     submission.addFile(submissionFile);
                 }
             }
@@ -237,28 +233,6 @@ public class SubmissionController {
         }
         return buildResponse(HttpStatus.OK, "Edit Submission: Chỉnh sửa thành công",
                 SubmissionMapper.toDTO(submissionRepository.save(submission)));
-    }
-
-
-    // Helper
-    private SubmissionFile buildSubmissionFile(String s3Key,
-                                               Submission submission, MultipartFile file) throws IOException{
-
-        s3Service.uploadFile(
-                s3Key,
-                file.getInputStream(),
-                file.getSize(),
-                file.getContentType()
-        );
-
-        SubmissionFile submissionFile = new SubmissionFile();
-        submissionFile.setSubmission(submission);
-        submissionFile.setS3Key(s3Key);
-        submissionFile.setOriginalFilename(file.getOriginalFilename());
-        submissionFile.setContentType(file.getContentType());
-        submissionFile.setFileSize(file.getSize());
-        submissionFile.setUploadedAt(LocalDateTime.now());
-        return submissionFile;
     }
 
     private User extractStudentFromUserCourse(Long courseId, Authentication auth) {
@@ -294,16 +268,6 @@ public class SubmissionController {
         if (submissionOptional.isEmpty())
             throw new RuntimeException("Không tìm thấy submission phù hợp");
         return submissionOptional.get();
-    }
-
-    private String generateSubmissionFileKey(Submission submission, MultipartFile file) {
-        String s3Key = String.format("submissions/assignment-%d/user-%d/submission-%d/%s",
-                submission.getAssignment().getId(),
-                submission.getUser().getId(),
-                submission.getId(),
-                UUID.randomUUID() + "-" + file.getOriginalFilename());
-
-        return s3Key;
     }
 
     // Tutor là người submit, hoặc là admin hoặc là tutor

@@ -68,12 +68,11 @@ public class Course {
     }
 
     public void addAssignment(Assignment assignment) throws Exception{
-        this.assignmentList.add(assignment);
         if (totalAssignmentWeight() >= 100.0) {
-            throw new Exception("Add assignment: Tổng phần trăm điểm vượt quá 100%, " +
-                    "edit lại số phần trăm của các assignment để tiếp tục");
+            throw new Exception("Add assignment: Tổng phần trăm điểm vượt quá 100%");
         }
         assignment.setCourse(this);
+        this.assignmentList.add(assignment);
     }
     public void removeAssignment(Assignment assignment) {
         this.assignmentList.remove(assignment);

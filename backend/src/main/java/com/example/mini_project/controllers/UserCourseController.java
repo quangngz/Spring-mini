@@ -1,8 +1,8 @@
 package com.example.mini_project.controllers;
 
 import com.example.mini_project.entities.ResponseDTO;
-import com.example.mini_project.entities.course.CourseDTO;
-import com.example.mini_project.entities.course.CourseDTOMapper;
+import com.example.mini_project.entities.course.CourseResponseDTO;
+import com.example.mini_project.entities.course.CourseResponseDTOMapper;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
@@ -220,8 +220,8 @@ public class UserCourseController {
         User user = getUserFromAuth(auth, "Get All Courses", this.userRepository);
 
         List<UserCourse>  userCourseList = userCourseRepository.findAllByUser_Id(user.getId());
-        List<CourseDTO> courseList = userCourseList.stream().map(
-                userCourse -> CourseDTOMapper.toDTO(userCourse.getCourse())).toList();
+        List<CourseResponseDTO> courseList = userCourseList.stream().map(
+                userCourse -> CourseResponseDTOMapper.toDTO(userCourse.getCourse())).toList();
         return buildResponse(HttpStatus.OK, "Get all courses: thành công", courseList);
     }
 

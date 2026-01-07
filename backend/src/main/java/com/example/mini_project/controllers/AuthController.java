@@ -1,11 +1,10 @@
 package com.example.mini_project.controllers;
 
 import com.example.mini_project.entities.ResponseDTO;
+import com.example.mini_project.entities.SigninRequest;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.repositories.UserRepository;
 import com.example.mini_project.security.JwtUtil;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -85,10 +84,3 @@ public class AuthController {
     }
 }
 
-@Data
-class SigninRequest {
-    @NotNull
-    private String username;
-    @NotNull
-    private String password;
-}

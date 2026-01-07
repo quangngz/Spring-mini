@@ -1,10 +1,8 @@
 package com.example.mini_project.entities.course;
 
-import java.time.LocalDateTime;
-
-public class CourseDTOMapper {
-    public static CourseDTO toDTO(Course course) {
-        CourseDTO dto = new CourseDTO();
+public class CourseResponseDTOMapper {
+    public static CourseResponseDTO toDTO(Course course) {
+        CourseResponseDTO dto = new CourseResponseDTO();
         dto.setId(course.getId());
         dto.setCourseCode(course.getCourseCode());
         dto.setCourseName(course.getCourseName());

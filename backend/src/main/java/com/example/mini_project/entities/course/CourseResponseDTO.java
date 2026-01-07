@@ -2,12 +2,11 @@ package com.example.mini_project.entities.course;
 
 import lombok.*;
 
-import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseDTO {
+public class CourseResponseDTO {
     private Long id;
     private String courseCode;
     private String courseName;

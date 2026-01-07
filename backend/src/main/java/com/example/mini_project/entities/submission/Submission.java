@@ -1,12 +1,13 @@
 package com.example.mini_project.entities.submission;
 
+import com.example.mini_project.entities.file.SubmissionFile;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.assignment.Assignment;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @Setter
@@ -38,7 +39,7 @@ public class Submission {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
-    private List<SubmissionFile> files = new ArrayList<>();
+    private List<SubmissionFile> files = new LinkedList<>();
 
 
     @Enumerated(EnumType.STRING)
@@ -47,7 +48,7 @@ public class Submission {
 
 
     public void addFile(SubmissionFile file) {
-        files.add(file);
+        files.add(0,file);
         file.setSubmission(this);
     }
 }

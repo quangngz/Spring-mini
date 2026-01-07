@@ -1,5 +1,6 @@
 package com.example.mini_project.service;
 
+import com.example.mini_project.entities.submission.Submission;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -59,5 +61,15 @@ public class S3Service {
                 .key(key)
                 .build();
         s3Client.deleteObject(deleteRequest);
+    }
+
+    private String generateSubmissionFileKey(Submission submission, MultipartFile file) {
+        String s3Key = String.format("submissions/assignment-%d/user-%d/submission-%d/%s",
+                submission.getAssignment().getId(),
+                submission.getUser().getId(),
+                submission.getId(),
+                UUID.randomUUID() + "-" + file.getOriginalFilename());
+
+        return s3Key;
     }
 }

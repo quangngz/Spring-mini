@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
@@ -37,5 +38,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ResponseDTO<UserCourse>> buildUserCourseResponse(HttpStatus status, String message,
                                                                            UserCourse usercourse) {
         return ResponseEntity.status(status).body(new ResponseDTO<>(message, usercourse));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<String> handleMaxSize(
+            MaxUploadSizeExceededException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body("File exceeds maximum allowed size");
     }
 }
