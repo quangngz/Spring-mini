@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.example.mini_project.controllers.UserController.buildResponse;
+
 @Slf4j
 @RestController
 @RequestMapping("/courses")
@@ -35,6 +36,7 @@ public class CourseController {
     private final UserRepository userRepository;
     private final UserCourseRepository userCourseRepository;
     private final PasswordEncoder encoder;
+
     public CourseController(CourseRepository courseRepository, UserRepository userRepository,
                             UserCourseRepository userCourseRepository, PasswordEncoder encoder) {
         this.courseRepository = courseRepository;
@@ -42,6 +44,7 @@ public class CourseController {
         this.userCourseRepository = userCourseRepository;
         this.encoder = encoder;
     }
+
     @GetMapping()
     public ResponseEntity getAllCourse() {
         Iterable<Course> courses = courseRepository.findAll();
@@ -50,7 +53,7 @@ public class CourseController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(new ResponseDTO<>("Lấy dữ liệu course thành công", result));
     }
-    
+
     @GetMapping("/{course-id}")
     public ResponseEntity getCourseById(@PathVariable("course-id") Long courseId) {
         Optional<Course> courseOptional = courseRepository.findById(courseId);
@@ -71,9 +74,21 @@ public class CourseController {
         return ResponseEntity.ok(new ResponseDTO<>("Lấy danh sách user trong course thành công", users));
     }
 
+        @GetMapping("{course-id}/cum-weight")
+        public ResponseEntity<?> getCumulativeWeight(@PathVariable("course-id") Long courseId, Authentication auth) {
+            UserDetails userDetails = (UserDetails) auth.getPrincipal();
+            Optional<User> userOptional = userRepository
+                    .findByUsername(userDetails.getUsername());
+
+            if (userOptional.isEmpty())
+                throw new RuntimeException("Không tìm thấy học sinh");
+            User user = userOptional.get();
+            return buildResponse(HttpStatus.OK, "Lấy tổng điểm thành công",
+                    courseRepository.getTotalWeightedScore(user.getId(), courseId));
+        }
     @GetMapping("/search")
     public ResponseEntity searchCourse(@RequestParam(value = "q", required = false) String keyword,
-                                                                  @RequestParam(value = "is-private", required = false) Boolean isPrivate) {
+                                       @RequestParam(value = "is-private", required = false) Boolean isPrivate) {
         List<Course> resultList = courseRepository.search(keyword, isPrivate);
         if (resultList == null) return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ResponseDTO<>("Vui lòng tìm kiếm trường phù hợp", null));
@@ -95,7 +110,7 @@ public class CourseController {
         Object principal = auth.getPrincipal();
         Optional<User> userOptional = null;
         if (principal instanceof UserDetails userDetails) {
-            userOptional= userRepository.findByUsername(userDetails.getUsername());
+            userOptional = userRepository.findByUsername(userDetails.getUsername());
         }
         if (principal instanceof String p) {
             userOptional = userRepository.findByUsername(p);
@@ -131,8 +146,8 @@ public class CourseController {
     @PutMapping("/update/{course-id}")
     @Transactional
     public ResponseEntity updateCourse(@PathVariable("course-id") Long courseId,
-                                      @RequestBody @Validated CourseUpdateRequest req,
-                                      BindingResult bindingResult) throws BindException {
+                                       @RequestBody @Validated CourseUpdateRequest req,
+                                       BindingResult bindingResult) throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
         }
@@ -153,7 +168,7 @@ public class CourseController {
         // trạng thái hiện tại
         boolean wasPrivate = Boolean.TRUE.equals(existingCourse.getIsPrivate());
         // trạng tái tiếp tới
-        boolean willBePrivate = Boolean.TRUE.equals(requestedPrivacy);
+        boolean willBePrivate = requestedPrivacy;
         // Nếu trạng thái hiện tại không set nhưng trạng thái sắp tới sẽ set private, thì sẽ là lần đầu set mật khẩu mới
         boolean isSettingInitialPassword = !wasPrivate && willBePrivate;
         // Nếu đã private và tương lai cũng sẽ là private thì là đang đổi mật khẩu thông thường
@@ -163,8 +178,8 @@ public class CourseController {
         // Chưa từng là private và không chỉnh lại thành private thì không set được mật khẩu
         if (!wasPrivate && !willBePrivate &&
                 ((req.password1() != null && !req.password1().isEmpty())
-                  || (req.password2() != null && !req.password2().isEmpty()) 
-                  || (req.oldPassword() != null && !req.oldPassword().isEmpty()))) {
+                        || (req.password2() != null && !req.password2().isEmpty())
+                        || (req.oldPassword() != null && !req.oldPassword().isEmpty()))) {
             return buildResponse(
                     HttpStatus.BAD_REQUEST,
                     "Course công khai không thể đổi mật khẩu",
@@ -175,22 +190,22 @@ public class CourseController {
         /* Từ: PUBLIC → PRIVATE */
         if (isSettingInitialPassword) {
             if (req.password1() == null || req.password2() == null || !req.password1().equals(req.password2())) {
-                return buildResponse(HttpStatus.BAD_REQUEST,"Cần mật khẩu hợp lệ khi chuyển sang private",null);
+                return buildResponse(HttpStatus.BAD_REQUEST, "Cần mật khẩu hợp lệ khi chuyển sang private", null);
             }
             if (req.password1().isBlank()) {
-                return buildResponse(HttpStatus.BAD_REQUEST,"Mật khẩu không được rỗng",null);
+                return buildResponse(HttpStatus.BAD_REQUEST, "Mật khẩu không được rỗng", null);
             }
             existingCourse.setPassword(encoder.encode(req.password1()));
         }
         if (isChangingPassword) {
             if (req.oldPassword() == null || !encoder.matches(req.oldPassword(), existingCourse.getPassword())) {
-                return buildResponse(HttpStatus.BAD_REQUEST,"Xác thực thất bại",null);
+                return buildResponse(HttpStatus.BAD_REQUEST, "Xác thực thất bại", null);
             }
             if (req.password1() == null || req.password2() == null || !req.password1().equals(req.password2())) {
-                return buildResponse(HttpStatus.BAD_REQUEST,"Mật khẩu xác nhận không khớp",null);
+                return buildResponse(HttpStatus.BAD_REQUEST, "Mật khẩu xác nhận không khớp", null);
             }
             if (req.password1().isBlank()) {
-                return buildResponse(HttpStatus.BAD_REQUEST,"Mật khẩu không được rỗng",null);
+                return buildResponse(HttpStatus.BAD_REQUEST, "Mật khẩu không được rỗng", null);
             }
             existingCourse.setPassword(encoder.encode(req.password1()));
         }
@@ -224,7 +239,7 @@ public class CourseController {
         if (principal instanceof UserDetails userDetails) {
             userCreatedUsername = userDetails.getUsername();
         }
-        if (principal instanceof  String s) {
+        if (principal instanceof String s) {
             userCreatedUsername = s;
         }
         if (userCreatedUsername == null || !userCreatedUsername.equals(course.getCreatedBy().getUsername())) {

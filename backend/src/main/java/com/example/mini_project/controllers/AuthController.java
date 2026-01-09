@@ -15,7 +15,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.stream.Collectors;
 
@@ -23,10 +26,10 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private PasswordEncoder encoder;
-    private AuthenticationManager authenticationManager;
-    private JwtUtil jwtUtil;
-    private UserRepository userRepository;
+    private final PasswordEncoder encoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     // Can add @Autowired neu 1 class gom nhieu constructor de chon cai nao duoc uu tien
     @Autowired
@@ -58,7 +61,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<ResponseDTO<Void>> registerUser(@RequestBody @Validated User user,
-                                                          BindingResult bindingResult){
+                                                          BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             String message = bindingResult.getFieldErrors()
                     .stream()
@@ -69,7 +72,7 @@ public class AuthController {
                     .body(new ResponseDTO<>(message, null));
         }
         if (userRepository.existsByUsername(user.getUsername())) {
-            return ResponseEntity.ok(new ResponseDTO<>("User đã tồn tại!", null)) ;
+            return ResponseEntity.ok(new ResponseDTO<>("User đã tồn tại!", null));
         }
 
         if (user.getPassword() != null) {
@@ -80,7 +83,7 @@ public class AuthController {
         }
 
         userRepository.save(user);
-        return ResponseEntity.ok(new ResponseDTO<>("User đăng ký tài khoản thành công!", null)) ;
+        return ResponseEntity.ok(new ResponseDTO<>("User đăng ký tài khoản thành công!", null));
     }
 }
 

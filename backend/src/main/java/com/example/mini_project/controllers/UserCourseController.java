@@ -1,11 +1,11 @@
 package com.example.mini_project.controllers;
 
 import com.example.mini_project.entities.ResponseDTO;
+import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseResponseDTO;
 import com.example.mini_project.entities.course.CourseResponseDTOMapper;
-import com.example.mini_project.entities.user.User;
-import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.usercourse.CourseEnrollRequest;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.entities.usercourse.UserCourseDTOMapping;
@@ -37,6 +37,7 @@ public class UserCourseController {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final PasswordEncoder encoder;
+
     public UserCourseController(UserCourseRepository userCourseRepository, UserRepository userRepository,
                                 CourseRepository courseRepository, PasswordEncoder encoder) {
         this.userCourseRepository = userCourseRepository;
@@ -56,14 +57,14 @@ public class UserCourseController {
         return userOptional.get();
     }
 
-    public static Course getCourseFromHttp(Long id, String action, CourseRepository courseRepository) throws CourseNotFoundException{
+    public static Course getCourseFromHttp(Long id, String action, CourseRepository courseRepository) throws CourseNotFoundException {
         Optional<Course> courseOptional = courseRepository.findById(id);
         if (courseOptional.isEmpty()) {
             throw new CourseNotFoundException(action + ": Không tìm thấy course!");
         }
         return courseOptional.get();
     }
-    
+
     @PostMapping("/enroll/{id}")
     @Transactional
     public ResponseEntity enrollUserInCourse(@PathVariable("id") Long id, Authentication auth,
@@ -79,10 +80,7 @@ public class UserCourseController {
             return buildResponse(HttpStatus.FORBIDDEN, "Enroll: User đã ở trong course!", null);
         }
         // Bước 4: Bắt user nhập mật khẩu của course nếu course là private
-        boolean verified = true;
-        if (course.getIsPrivate().equals(Boolean.TRUE)) {
-            verified = false;
-        }
+        boolean verified = !course.getIsPrivate().equals(Boolean.TRUE);
         if (encoder.matches(req.password(), course.getPassword())) {
             verified = true;
         }
@@ -99,7 +97,7 @@ public class UserCourseController {
     @DeleteMapping("/withdraw/{course-id}")
     @Transactional
     public ResponseEntity<String> withdrawUserFromCourse(@PathVariable("course-id") Long courseId, Authentication auth)
-            throws UserNotFoundException, CourseNotFoundException{
+            throws UserNotFoundException, CourseNotFoundException {
 
         User user = getUserFromAuth(auth, "Withdraw", this.userRepository);
 
@@ -118,7 +116,7 @@ public class UserCourseController {
     @PutMapping("/promote-tutor")
     @Transactional
     public ResponseEntity promoteTutor(@RequestParam("course-id") Long courseId,
-            @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException{
+                                       @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException {
         // Bước 1: Lấy các dữ liệu liên quan.
         User owner = getUserFromAuth(auth, "Promote Tutor - owner", this.userRepository);
         Course course = getCourseFromHttp(courseId, "Promote Tutor", this.courseRepository);
@@ -126,62 +124,62 @@ public class UserCourseController {
         // Bước 2: check xem người dùng hiện tại có đủ thẩm quyền để tạo thêm tutor.
         User courseCreator = course.getCreatedBy();
         if (!courseCreator.getId().equals(owner.getId())) {
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Promote Tutor: Chỉ người tạo khóa học mới có thể thêm tutor", null);
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Promote Tutor: Chỉ người tạo khóa học mới có thể thêm tutor", null);
         }
 
         // Buoớc 3: Lấy targetUserCourse từ targetUserId và courseId
-        Optional<UserCourse> targetUserCourseOptional= userCourseRepository.findByUser_IdAndCourse_Id(targetUserId, course.getId());
+        Optional<UserCourse> targetUserCourseOptional = userCourseRepository.findByUser_IdAndCourse_Id(targetUserId, course.getId());
         if (targetUserCourseOptional.isEmpty())
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Promote Tutor - targetUser: Không tìm thấy thông tin enroll", null);
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Promote Tutor - targetUser: Không tìm thấy thông tin enroll", null);
         UserCourse targetUserCourse = targetUserCourseOptional.get();
 
         // Bước 4: Nếu đã là tutor thì không cần update.
         if (targetUserCourse.getRole() == CourseRole.TUTOR) {
-            return buildResponse(HttpStatus.OK, 
-                "Promote Tutor: Người dùng đã là tutor", targetUserCourse);
+            return buildResponse(HttpStatus.OK,
+                    "Promote Tutor: Người dùng đã là tutor", targetUserCourse);
         }
         // Bước 5: Update
         targetUserCourse.setRole(CourseRole.TUTOR);
         // userCourseRepository.save(userCourse); Khong can phai lam v trong nhung method nao duoc goi la Transactional
-        return buildResponse(HttpStatus.OK, 
-            "Promote Tutor: Thăng cấp người dùng thành tutor thành công", UserCourseDTOMapping.toDTO(targetUserCourse));
+        return buildResponse(HttpStatus.OK,
+                "Promote Tutor: Thăng cấp người dùng thành tutor thành công", UserCourseDTOMapping.toDTO(targetUserCourse));
     }
 
     @PutMapping("/demote-tutor")
     @Transactional
     public ResponseEntity demoteTutor(@RequestParam("course-id") Long courseId,
-            @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException {
+                                      @RequestParam("user-id") Long targetUserId, Authentication auth) throws UserNotFoundException, CourseNotFoundException {
         // Bước 1: Lấy các dữ liệu liên quan
         User owner = getUserFromAuth(auth, "Demote Tutor", this.userRepository);
         Course course = getCourseFromHttp(courseId, "Demote Tutor", this.courseRepository);
         // Bước 2: check xem người dùng hiện tại có đủ thẩm quyền để hạ cấp tutor.
         User courseCreator = course.getCreatedBy();
         if (!courseCreator.getId().equals(owner.getId())) {
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Demote Tutor: Chỉ người tạo khóa học mới có thể hạ cấp tutor", null);
-        }   
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Demote Tutor: Chỉ người tạo khóa học mới có thể hạ cấp tutor", null);
+        }
 
-        Optional<UserCourse> targetUserCourseOptional= userCourseRepository.findByUser_IdAndCourse_Id(targetUserId, course.getId());
+        Optional<UserCourse> targetUserCourseOptional = userCourseRepository.findByUser_IdAndCourse_Id(targetUserId, course.getId());
         if (targetUserCourseOptional.isEmpty())
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Demote Tutor - targetUser: Không tìm thấy thông tin enroll", null);
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Demote Tutor - targetUser: Không tìm thấy thông tin enroll", null);
         UserCourse targetUserCourse = targetUserCourseOptional.get();
         if (targetUserCourse.getRole() == CourseRole.STUDENT)
-            return buildResponse(HttpStatus.OK, 
-                "Demote Tutor: Người dùng đã là student", targetUserCourse);
+            return buildResponse(HttpStatus.OK,
+                    "Demote Tutor: Người dùng đã là student", targetUserCourse);
 
         targetUserCourse.setRole(CourseRole.STUDENT);
         // userCourseRepository.save(userCourse); Khong can phai lam v trong nhung method nao duoc goi la Transactional
-        return buildResponse(HttpStatus.OK, 
-            "Demote Tutor: Hạ cấp người dùng thành student thành công", UserCourseDTOMapping.toDTO(targetUserCourse));
+        return buildResponse(HttpStatus.OK,
+                "Demote Tutor: Hạ cấp người dùng thành student thành công", UserCourseDTOMapping.toDTO(targetUserCourse));
     }
 
     @DeleteMapping("/remove-all-student/{course-id}")
     @Transactional
     public ResponseEntity removeAllStudentsFromCourse(@PathVariable("course-id") Long courseId,
-            Authentication auth) throws UserNotFoundException, CourseNotFoundException {
+                                                      Authentication auth) throws UserNotFoundException, CourseNotFoundException {
 
         User user = getUserFromAuth(auth, "Remove All Students", this.userRepository);
 
@@ -189,13 +187,13 @@ public class UserCourseController {
 
         User courseCreator = course.getCreatedBy();
         if (!courseCreator.getId().equals(user.getId())) {
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Remove All Students: Chỉ người tạo khóa học mới có thể xóa tất cả sinh viên", null);
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Remove All Students: Chỉ người tạo khóa học mới có thể xóa tất cả sinh viên", null);
         }
 
         course.getStudents().clear();
-        return buildResponse(HttpStatus.OK, 
-            "Remove All Students: Xóa tất cả sinh viên khỏi khóa học thành công", null);
+        return buildResponse(HttpStatus.OK,
+                "Remove All Students: Xóa tất cả sinh viên khỏi khóa học thành công", null);
     }
 
     @DeleteMapping("/remove-all-courses-for-user/{user-id}")
@@ -206,20 +204,20 @@ public class UserCourseController {
         User user = getUserFromAuth(auth, "Remove All Courses", this.userRepository);
 
         if (!user.getId().equals(userId)) {
-            return buildResponse(HttpStatus.FORBIDDEN, 
-                "Remove All Courses: Chỉ người dùng hiện tại mới có thể xóa tất cả khóa học của họ", null);
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Remove All Courses: Chỉ người dùng hiện tại mới có thể xóa tất cả khóa học của họ", null);
         }
         // userCourseRepository.deleteAllByUser_Id(userId);
         user.getCourses().clear();
-        return buildResponse(HttpStatus.OK, 
-            "Remove All Courses: Xóa tất cả khóa học của người dùng thành công", null);
+        return buildResponse(HttpStatus.OK,
+                "Remove All Courses: Xóa tất cả khóa học của người dùng thành công", null);
     }
 
     @GetMapping("/all-courses")
-    public ResponseEntity getUserEnrolledCourses(Authentication auth) throws UserNotFoundException{
+    public ResponseEntity getUserEnrolledCourses(Authentication auth) throws UserNotFoundException {
         User user = getUserFromAuth(auth, "Get All Courses", this.userRepository);
 
-        List<UserCourse>  userCourseList = userCourseRepository.findAllByUser_Id(user.getId());
+        List<UserCourse> userCourseList = userCourseRepository.findAllByUser_Id(user.getId());
         List<CourseResponseDTO> courseList = userCourseList.stream().map(
                 userCourse -> CourseResponseDTOMapper.toDTO(userCourse.getCourse())).toList();
         return buildResponse(HttpStatus.OK, "Get all courses: thành công", courseList);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, assignmentsApi, enrollmentApi, CourseDTO, Assignment, UserCourse } from '@/lib/api';
+import { coursesApi, assignmentsApi, enrollmentApi, submissionsApi, CourseDTO, Assignment, UserCourse } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 export const useCourseDetail = (courseId: string | undefined, username?: string) => {
@@ -10,6 +10,7 @@ export const useCourseDetail = (courseId: string | undefined, username?: string)
   const [course, setCourse] = useState<CourseDTO | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [enrollments, setEnrollments] = useState<UserCourse[]>([]);
+  const [cumulativeWeight, setCumulativeWeight] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const isCreator = username === course?.createdBy;
@@ -29,13 +30,15 @@ export const useCourseDetail = (courseId: string | undefined, username?: string)
     try {
       const id = Number(courseId);
       const courseData = await coursesApi.getById(id);
-      const [assignmentsData, enrollmentsData] = await Promise.all([
+      const [assignmentsData, enrollmentsData, cumWeight] = await Promise.all([
         assignmentsApi.getAll(id),
         coursesApi.getEnrollments(id),
+        submissionsApi.getCumulativeWeight(id).catch(() => null),
       ]);
       setCourse(courseData);
       setAssignments(assignmentsData || []);
       setEnrollments(enrollmentsData || []);
+      setCumulativeWeight(cumWeight);
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -124,6 +127,7 @@ export const useCourseDetail = (courseId: string | undefined, username?: string)
     course,
     assignments,
     enrollments,
+    cumulativeWeight,
     isLoading,
     isCreator,
     isTutor,

@@ -19,7 +19,7 @@ import java.util.UUID;
 @Setter
 @Getter
 @Entity
-public class SubmissionFile implements StoredFile{
+public class SubmissionFile implements StoredFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -55,7 +55,7 @@ public class SubmissionFile implements StoredFile{
     }
 
     public static SubmissionFile buildSubmissionFile(S3Service s3Service, String s3Key,
-                                               Submission submission, MultipartFile file) throws IOException {
+                                                     Submission submission, MultipartFile file) throws IOException {
 
         s3Service.uploadFile(
                 s3Key,

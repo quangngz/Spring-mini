@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Assignment, Submission, submissionsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, CheckCircle, ZoomIn, ZoomOut, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Eye, CheckCircle, FileText } from 'lucide-react';
+import { PdfViewerDialog } from '@/components/ui/pdf-viewer';
 
 interface ViewSubmissionsDialogProps {
   open: boolean;
@@ -34,10 +35,6 @@ export const ViewSubmissionsDialog: React.FC<ViewSubmissionsDialogProps> = ({ op
 
   // PDF viewer state
   const [pdfOpen, setPdfOpen] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfZoom, setPdfZoom] = useState(100);
-  const [currentPdfIndex, setCurrentPdfIndex] = useState(0);
   const [pdfSubmission, setPdfSubmission] = useState<Submission | null>(null);
 
   const title = useMemo(() => assignment ? `Bài nộp cho: ${assignment.assignmentName}` : 'Bài nộp', [assignment]);
@@ -95,79 +92,15 @@ export const ViewSubmissionsDialog: React.FC<ViewSubmissionsDialogProps> = ({ op
     onOpenChange(false);
   };
 
-  // PDF viewer functions
-  const loadPdf = useCallback(async (submission: Submission, index: number) => {
-    if (!assignment) return;
-    setPdfLoading(true);
-    setPdfSubmission(submission);
-    setCurrentPdfIndex(index);
-    
-    // Revoke previous URL to prevent memory leaks
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
-    }
-
-    try {
-      const blob = await submissionsApi.getPdf(courseId, assignment.id, submission.id, index);
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-      setPdfOpen(true);
-    } catch (error: any) {
-      toast({
-        title: 'Không thể tải PDF',
-        description: error.response?.data?.message || 'Vui lòng thử lại sau',
-        variant: 'destructive',
-      });
-    } finally {
-      setPdfLoading(false);
-    }
-  }, [pdfUrl, toast, courseId, assignment]);
-
   const openPdfViewer = (submission: Submission) => {
-    setPdfZoom(100);
-    loadPdf(submission, 0);
+    setPdfSubmission(submission);
+    setPdfOpen(true);
   };
 
-  const closePdfViewer = useCallback(() => {
-    setPdfOpen(false);
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-      setPdfUrl(null);
-    }
-    setPdfSubmission(null);
-    setCurrentPdfIndex(0);
-    setPdfZoom(100);
-  }, [pdfUrl]);
-
-  const handleZoomIn = () => {
-    setPdfZoom(prev => Math.min(prev + 25, 300));
-  };
-
-  const handleZoomOut = () => {
-    setPdfZoom(prev => Math.max(prev - 25, 25));
-  };
-
-  const handlePrevPdf = () => {
-    if (pdfSubmission && currentPdfIndex > 0) {
-      loadPdf(pdfSubmission, currentPdfIndex - 1);
-    }
-  };
-
-  const handleNextPdf = () => {
-    if (pdfSubmission) {
-      loadPdf(pdfSubmission, currentPdfIndex + 1);
-    }
-  };
-
-  // Cleanup PDF URL on unmount
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
-  }, []);
+  const fetchSubmissionPdf = useCallback(async (index: number) => {
+    if (!assignment || !pdfSubmission) throw new Error('No submission selected');
+    return submissionsApi.getPdf(courseId, assignment.id, pdfSubmission.id, index);
+  }, [courseId, assignment, pdfSubmission]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,12 +139,8 @@ export const ViewSubmissionsDialog: React.FC<ViewSubmissionsDialogProps> = ({ op
                     </TableCell>
                     <TableCell>{s.grade != null ? s.grade : '-'}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => openPdfViewer(s)} disabled={pdfLoading}>
-                        {pdfLoading && pdfSubmission?.id === s.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FileText className="h-4 w-4" />
-                        )}
+                      <Button size="sm" variant="outline" className="gap-1" onClick={() => openPdfViewer(s)}>
+                        <FileText className="h-4 w-4" />
                         PDF
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1" onClick={() => openDetail(s)}>
@@ -243,7 +172,7 @@ export const ViewSubmissionsDialog: React.FC<ViewSubmissionsDialogProps> = ({ op
             <div>
               <Label className="mb-1 block">Nội dung</Label>
               <div className="rounded-md border bg-muted p-3 max-h-72 overflow-auto whitespace-pre-wrap text-sm">
-                {selected?.content || '(Trống)'}
+                {selected?.description || '(Trống)'}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 items-end">
@@ -281,104 +210,14 @@ export const ViewSubmissionsDialog: React.FC<ViewSubmissionsDialogProps> = ({ op
       </Dialog>
 
       {/* PDF Viewer Modal */}
-      <Dialog open={pdfOpen} onOpenChange={(open) => !open && closePdfViewer()}>
-        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
-          <DialogHeader className="p-4 pb-2 border-b shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              PDF Viewer
-            </DialogTitle>
-            <DialogDescription>
-              {pdfSubmission ? `${pdfSubmission.username} • Tệp ${currentPdfIndex + 1}` : ''}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/50 shrink-0">
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePrevPdf}
-                disabled={currentPdfIndex === 0 || pdfLoading}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground min-w-[80px] text-center">
-                Tệp {currentPdfIndex + 1}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleNextPdf}
-                disabled={pdfLoading}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleZoomOut}
-                disabled={pdfZoom <= 25}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium min-w-[60px] text-center">
-                {pdfZoom}%
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleZoomIn}
-                disabled={pdfZoom >= 300}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          
-          {/* PDF Content */}
-          <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-900">
-            {pdfLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : pdfUrl ? (
-              <div 
-                className="min-h-full flex justify-center p-4"
-                style={{ 
-                  overflow: 'auto',
-                }}
-              >
-                <iframe
-                  src={pdfUrl}
-                  title="PDF Viewer"
-                  className="border-0 shadow-lg bg-white"
-                  style={{
-                    width: `${pdfZoom}%`,
-                    minWidth: '600px',
-                    height: `${Math.max(pdfZoom, 100)}%`,
-                    minHeight: '800px',
-                    transform: `scale(${pdfZoom / 100})`,
-                    transformOrigin: 'top center',
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                Không thể hiển thị PDF
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="p-4 pt-2 border-t shrink-0">
-            <Button variant="outline" onClick={closePdfViewer}>Đóng</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PdfViewerDialog
+        open={pdfOpen}
+        onOpenChange={setPdfOpen}
+        title={pdfSubmission ? `Bài nộp: ${pdfSubmission.username}` : 'PDF Viewer'}
+        description={pdfSubmission ? `Nộp lúc: ${formatDateTime(pdfSubmission.submissionTime)} • ${pdfSubmission.fileCount || 0} phiên bản` : ''}
+        fetchPdf={fetchSubmissionPdf}
+        totalFiles={pdfSubmission?.fileCount}
+      />
     </Dialog>
   );
 };

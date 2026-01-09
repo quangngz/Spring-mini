@@ -1,4 +1,5 @@
 package com.example.mini_project.entities.user;
+
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name="users")
+@Table(name = "users")
 @EqualsAndHashCode
 public class User {
     @Id
@@ -27,28 +28,28 @@ public class User {
     private Long id;
 
     @NotNull
-    @Column(name="USERNAME", unique = true)
+    @Column(name = "USERNAME", unique = true)
     private String username;
 
     @NotNull
-    @Column(name="PASSWORD")
+    @Column(name = "PASSWORD")
     private String password;
 
-    @Column(name="FIRST_NAME")
+    @Column(name = "FIRST_NAME")
     private String firstname;
 
-    @Column(name="LAST_NAME")
+    @Column(name = "LAST_NAME")
     private String lastname;
 
-    @Column(name="PHONE_NUM")
+    @Column(name = "PHONE_NUM")
     private String phoneNum;
 
-    @Column(name="ADDRESS")
+    @Column(name = "ADDRESS")
     private String address;
 
 
     @DateTimeFormat
-    @Column(name="DOB")
+    @Column(name = "DOB")
     private LocalDate dob;
 
     // Map roles properly as a collection of strings
@@ -68,8 +69,8 @@ public class User {
         Set<String> effectiveRoles = (role == null || role.isEmpty())
                 ? Set.of("ROLE_USER")
                 : role.stream()
-                      .map(this::normalizeRole)
-                      .collect(Collectors.toSet());
+                .map(this::normalizeRole)
+                .collect(Collectors.toSet());
         return effectiveRoles.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
@@ -77,6 +78,7 @@ public class User {
 
     /**
      * Nếu muôn add Role từ get thì phải map từ GrantedAuthority qua String
+     *
      * @param insertRole
      */
     public void addRole(String insertRole) {
@@ -87,6 +89,7 @@ public class User {
 
     /**
      * Helper function giúp quản lí role về 1 format
+     *
      * @param rawRole
      * @return
      */

@@ -1,7 +1,6 @@
 package com.example.mini_project.entities.file;
 
 import com.example.mini_project.entities.assignment.Assignment;
-import com.example.mini_project.entities.submission.Submission;
 import com.example.mini_project.service.S3Service;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -19,7 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class AssignmentFile implements StoredFile{
+public class AssignmentFile implements StoredFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -53,7 +52,7 @@ public class AssignmentFile implements StoredFile{
     }
 
     public static AssignmentFile build(S3Service s3Service, String s3Key,
-                                                     Assignment assignment, MultipartFile file) throws IOException {
+                                       Assignment assignment, MultipartFile file) throws IOException {
 
         s3Service.uploadFile(
                 s3Key,

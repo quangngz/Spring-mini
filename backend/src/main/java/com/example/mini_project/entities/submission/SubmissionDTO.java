@@ -12,8 +12,9 @@ public class SubmissionDTO {
     private Long id;
     private Long assignmentId;
     private String username;
-    private InputStream content;
-    private LocalDateTime submissionTime; 
+    private String description;
+    private LocalDateTime submissionTime;
     private SubmissionStatus status;
     private Double grade;
+    private Integer fileCount;
 }

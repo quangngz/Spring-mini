@@ -2,11 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CourseDTO, UserCourse } from '@/lib/api';
-import { ArrowLeft, BookOpen, Users, Calendar, Lock, Unlock, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Calendar, Lock, Unlock, Trash2, Trophy } from 'lucide-react';
 
 interface CourseHeaderProps {
   course: CourseDTO;
   enrollmentsCount: number;
+  cumulativeWeight: number | null;
   isCreator: boolean;
   onDeleteCourse: () => void;
   onEditCourse: () => void;
@@ -15,6 +16,7 @@ interface CourseHeaderProps {
 const CourseHeader = ({
   course,
   enrollmentsCount,
+  cumulativeWeight,
   isCreator,
   onDeleteCourse,
   onEditCourse,
@@ -49,6 +51,12 @@ const CourseHeader = ({
                 <Users className="h-4 w-4" />
                 {enrollmentsCount} đã ghi danh
               </span>
+              {cumulativeWeight !== null && (
+                <span className="flex items-center gap-1 text-primary font-medium">
+                  <Trophy className="h-4 w-4" />
+                  Phần trăm điểm đạt được: {cumulativeWeight.toFixed(1)}%
+                </span>
+              )}
               {course.endDate && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />

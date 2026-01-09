@@ -15,14 +15,17 @@ public class RedisCacheConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
         // Default config for JSON objects
-        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .serializeKeysWith(
+        RedisCacheConfiguration defaultConfig =
+                RedisCacheConfiguration.defaultCacheConfig()
+                    .serializeKeysWith(
                         RedisSerializationContext.SerializationPair
-                                .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(
+                                .fromSerializer(new StringRedisSerializer())
+                    )
+                    .serializeValuesWith(
                         RedisSerializationContext.SerializationPair
-                                .fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                .entryTtl(Duration.ofMinutes(30));
+                                .fromSerializer(new JdkSerializationRedisSerializer())
+                    )
+                    .entryTtl(Duration.ofMinutes(30));
 
         // Config for binary data (PDFs) - uses JdkSerializationRedisSerializer for byte[]
         RedisCacheConfiguration pdfConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -36,7 +39,6 @@ public class RedisCacheConfig {
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(defaultConfig)
-                .withCacheConfiguration("submission_pdf", pdfConfig)
                 .withCacheConfiguration("file_pdf", pdfConfig)
                 .build();
     }

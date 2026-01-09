@@ -1,4 +1,5 @@
 package com.example.mini_project.controllers;
+
 import com.example.mini_project.entities.ResponseDTO;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.user.UserDTO;
@@ -35,6 +36,10 @@ public class UserController {
         this.encoder = encoder;
     }
 
+    public static <T> ResponseEntity<ResponseDTO<T>> buildResponse(HttpStatus status, String message, T data) {
+        return ResponseEntity.status(status).body(new ResponseDTO<>(message, data));
+    }
+
     @GetMapping()
     public ResponseEntity getUsers() {
         Iterable<User> users = userRepository.findAll();
@@ -42,15 +47,14 @@ public class UserController {
         return buildResponse(HttpStatus.OK, "Lấy dữ liệu thành công", result);
     }
 
-
     @GetMapping("/search")
     public ResponseEntity searchPeople(
-            @RequestParam(name="firstname", required = false) String firstname,
-            @RequestParam(name="lastname", required = false) String lastname,
-            @RequestParam(name="phoneNum", required = false) String phoneNum,
-            @RequestParam(name="address", required = false) String address,
-            @RequestParam(name="age", required = false) Integer age,
-            @RequestParam(name="city", required = false) String cityname
+            @RequestParam(name = "firstname", required = false) String firstname,
+            @RequestParam(name = "lastname", required = false) String lastname,
+            @RequestParam(name = "phoneNum", required = false) String phoneNum,
+            @RequestParam(name = "address", required = false) String address,
+            @RequestParam(name = "age", required = false) Integer age,
+            @RequestParam(name = "city", required = false) String cityname
     ) {
         LocalDate begin = null;
         LocalDate end = null;
@@ -70,14 +74,13 @@ public class UserController {
                 .orElseGet(() -> buildResponse(HttpStatus.NOT_FOUND, "User not found", null));
     }
 
-
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create")
     public ResponseEntity createNewUser(@RequestBody @Validated User user, BindingResult bindingResult)
-    throws  BindException{
+            throws BindException {
         if (bindingResult.hasErrors()) {
             throw new BindException(bindingResult);
-     }
+        }
         user.setPassword(encoder.encode(user.getPassword()));
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole(
@@ -95,7 +98,7 @@ public class UserController {
      */
     @PutMapping("/update/{username}")
     public ResponseEntity updateUser(@PathVariable("username") String username, @RequestBody User user,
-                                                        Authentication auth, HttpServletRequest request) {
+                                     Authentication auth, HttpServletRequest request) {
         log.info("Received request URI: {}", request.getRequestURI());
         log.info("Path variable username: {}", username);
         if (!isOwnerOrAdmin(auth, username)) {
@@ -112,6 +115,7 @@ public class UserController {
         userRepository.save(updatedUser);
         return buildResponse(HttpStatus.OK, "Thay đổi thông tin thành công!", UserDTOMapper.toDTO(updatedUser));
     }
+
     // Helper method
     private User getUser(User user, Optional<User> userOptional) {
         User updatedUser = userOptional.get();
@@ -136,13 +140,14 @@ public class UserController {
     /**
      * Helper method, check principal của authentication với 1 entry fetch từ db theo username.
      * Note: auth la mot object duoc tao ra tu token?
+     *
      * @param auth
      * @param updateUsername
      * @return
      */
     private boolean isOwnerOrAdmin(Authentication auth, String updateUsername) {
-        boolean isAdmin =  auth.getAuthorities().stream()
-                .anyMatch(a->a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         if (isAdmin) return true;
         Object principal = auth.getPrincipal();
 
@@ -160,7 +165,7 @@ public class UserController {
 
     @DeleteMapping("/delete/{username}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity deleteUser(@PathVariable("username") String username, Authentication auth){
+    public ResponseEntity deleteUser(@PathVariable("username") String username, Authentication auth) {
         Optional<User> optionalUser = userRepository.findByUsername(username);
         if (optionalUser.isEmpty()) {
             return buildResponse(HttpStatus.BAD_REQUEST, "User không tồn tại để xóa", null);
@@ -175,9 +180,5 @@ public class UserController {
         }
         userRepository.delete(user);
         return buildResponse(HttpStatus.OK, "Xóa thành công user", UserDTOMapper.toDTO(user));
-    }
-
-    public static <T> ResponseEntity<ResponseDTO<T>> buildResponse(HttpStatus status, String message, T data) {
-        return ResponseEntity.status(status).body(new ResponseDTO<>(message, data));
     }
 }

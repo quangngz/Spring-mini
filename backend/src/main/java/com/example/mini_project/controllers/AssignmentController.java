@@ -1,27 +1,22 @@
 package com.example.mini_project.controllers;
 
 import com.example.mini_project.entities.ResponseDTO;
+import com.example.mini_project.entities.assignment.Assignment;
 import com.example.mini_project.entities.assignment.AssignmentCreateDTO;
 import com.example.mini_project.entities.assignment.AssignmentResponseDTO;
 import com.example.mini_project.entities.assignment.AssignmentResponseDTOMapper;
-import com.example.mini_project.entities.file.AssignmentFile;
-import com.example.mini_project.entities.user.User;
-import com.example.mini_project.entities.assignment.Assignment;
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
+import com.example.mini_project.entities.file.AssignmentFile;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.usercourse.UserCourse;
 import com.example.mini_project.exception.CourseNotFoundException;
 import com.example.mini_project.exception.UserNotFoundException;
-import com.example.mini_project.repositories.AssignmentRepository;
-import com.example.mini_project.repositories.CourseRepository;
-import com.example.mini_project.repositories.SubmissionRepository;
-import com.example.mini_project.repositories.UserCourseRepository;
-import com.example.mini_project.repositories.UserRepository;
+import com.example.mini_project.repositories.*;
 import com.example.mini_project.service.S3Service;
 import com.example.mini_project.service.UploadPdfService;
 import jakarta.transaction.Transactional;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,7 +28,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -51,6 +45,7 @@ public class AssignmentController {
     private final SubmissionRepository submissionRepository;
     private final S3Service s3Service;
     private final UploadPdfService uploadPdfService;
+
     public AssignmentController(AssignmentRepository assignmentRepository,
                                 UserRepository userRepository,
                                 CourseRepository courseRepository,
@@ -68,9 +63,9 @@ public class AssignmentController {
 
     @GetMapping()
     public ResponseEntity getAllCourseAssignment(@PathVariable("course-id") Long courseId) {
-        List <AssignmentResponseDTO> AssignmentResponseDTOList = StreamSupport.stream(this.assignmentRepository
+        List<AssignmentResponseDTO> AssignmentResponseDTOList = StreamSupport.stream(this.assignmentRepository
                         .findByCourse_Id(courseId).spliterator(), false)
-                        .map(AssignmentResponseDTOMapper::toDTO).collect(Collectors.toList());
+                .map(AssignmentResponseDTOMapper::toDTO).collect(Collectors.toList());
         return buildResponse(HttpStatus.OK, "Assignment: Lấy dữ liệu assignment thành công", AssignmentResponseDTOList);
     }
 
@@ -82,13 +77,16 @@ public class AssignmentController {
             return buildResponse(HttpStatus.BAD_REQUEST, "Assignment: Không tìm thấy assignment để trích xuất pdf", null);
         }
         Assignment assignment = assignmentOptional.get();
-        AssignmentFile file;
-        if (index != null && index <= assignment.getFiles().size() - 1) {
-            file = assignment.getFiles().get(index);
-        } else {
-            // Cái này sẽ được chạy nhiều hơn, và add submission nhiều hơn nên dùng linked list tốt hơn.
-            file = assignment.getFiles().get(0);
+        
+        if (assignment.getFiles() == null || assignment.getFiles().isEmpty()) {
+            return buildResponse(HttpStatus.NOT_FOUND, "Assignment: Không có file PDF nào", null);
         }
+        
+        // Default to index 0 (newest file due to @OrderBy DESC)
+        int fileIndex = (index != null && index >= 0 && index < assignment.getFiles().size()) 
+                        ? index : 0;
+        
+        AssignmentFile file = assignment.getFiles().get(fileIndex);
 
         byte[] pdfBytes =
                 uploadPdfService.loadPdfBytes(file.getS3Key());
@@ -110,7 +108,7 @@ public class AssignmentController {
                                            @RequestPart("data") @Validated AssignmentCreateDTO request,
                                            @RequestPart(value = "file", required = false) List<MultipartFile> files,
                                            Authentication auth)
-            throws UserNotFoundException, CourseNotFoundException, Exception {
+            throws Exception {
 
         User user = getUserFromAuth(auth, "Tạo assignment");
         Course course = getCourseFromHttp(courseId, "Tạo assignment");
@@ -143,23 +141,23 @@ public class AssignmentController {
     @Transactional
     public ResponseEntity editAssignment(@PathVariable("course-id") Long courseId,
                                          @PathVariable("assignment-id") Long assignmentId,
-                                         @RequestPart(value="data", required = false) AssignmentCreateDTO request,
+                                         @RequestPart(value = "data", required = false) AssignmentCreateDTO request,
                                          @RequestPart(value = "file", required = false) List<MultipartFile> files,
                                          Authentication auth)
-            throws UserNotFoundException, CourseNotFoundException, Exception{
+            throws Exception {
 
         // Validation logic
         Course course = getCourseFromHttp(courseId, "Edit assignment");
         User user = getUserFromAuth(auth, "Edit assignment");
         if (!isTutor(user.getUsername(), course.getId())) {
-           return buildResponse(HttpStatus.FORBIDDEN,
-                   "Edit assignment: Không phải tutor hoặc không tìm thấy bạn trong hệ thống!", null);
-       }
+            return buildResponse(HttpStatus.FORBIDDEN,
+                    "Edit assignment: Không phải tutor hoặc không tìm thấy bạn trong hệ thống!", null);
+        }
 
         Optional<Assignment> assignmentOptional = assignmentRepository.findById(assignmentId);
 
-       if (assignmentOptional.isEmpty())
-           return buildResponse(HttpStatus.BAD_REQUEST, "Edit assignment: Không tìm thấy assignment cần edit", null);
+        if (assignmentOptional.isEmpty())
+            return buildResponse(HttpStatus.BAD_REQUEST, "Edit assignment: Không tìm thấy assignment cần edit", null);
 
 
         Assignment updateAssignment = getUpdateAssignment(request, assignmentOptional);
@@ -176,7 +174,7 @@ public class AssignmentController {
     @Transactional
     public ResponseEntity deleteAssignment(@PathVariable("course-id") Long courseId,
                                            @PathVariable(value = "assignment-id") Long assignmentId,
-                                           Authentication auth) throws UserNotFoundException, CourseNotFoundException{
+                                           Authentication auth) throws UserNotFoundException, CourseNotFoundException {
         Course course = getCourseFromHttp(courseId, "Xóa assignment");
         User user = getUserFromAuth(auth, "Xóa assignment");
         if (!isTutor(user.getUsername(), course.getId())) {
@@ -213,6 +211,7 @@ public class AssignmentController {
         }
         return userOptional.get();
     }
+
     private Course getCourseFromHttp(Long id,
                                      String action) throws CourseNotFoundException {
         Optional<Course> courseOptional = courseRepository.findById(id);

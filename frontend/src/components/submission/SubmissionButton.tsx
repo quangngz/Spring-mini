@@ -182,7 +182,7 @@ export const SubmissionButton: React.FC<SubmissionButtonProps> = ({ assignment, 
     try {
       let result: Submission;
       const submissionData = {
-        content: submissionContent.trim() || undefined,
+        description: submissionContent.trim() || undefined,
         files: selectedFiles.length > 0 ? selectedFiles : undefined,
       };
       

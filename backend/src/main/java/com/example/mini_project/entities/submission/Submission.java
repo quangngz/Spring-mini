@@ -1,12 +1,15 @@
 package com.example.mini_project.entities.submission;
 
+import com.example.mini_project.entities.assignment.Assignment;
 import com.example.mini_project.entities.file.SubmissionFile;
 import com.example.mini_project.entities.user.User;
-import com.example.mini_project.entities.assignment.Assignment;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -15,10 +18,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name="submissions",
+@Table(name = "submissions",
         uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "assignment_id"})
-})
+                @UniqueConstraint(columnNames = {"user_id", "assignment_id"})
+        })
 
 public class Submission {
     @Id
@@ -26,7 +29,7 @@ public class Submission {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,16 +42,18 @@ public class Submission {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @OrderBy("uploadedAt DESC")
     private List<SubmissionFile> files = new LinkedList<>();
 
-
+    private String description;
+    private LocalDateTime submissionTime;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SubmissionStatus status;
 
 
     public void addFile(SubmissionFile file) {
-        files.add(0,file);
+        files.add(0, file);
         file.setSubmission(this);
     }
 }

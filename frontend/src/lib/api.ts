@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // Response wrapper type
 export interface ApiResponse<T> {
@@ -108,14 +108,15 @@ export interface Submission {
   assignmentId: number;
   userId: number;
   username: string;
-  content: string;
+  description: string;
   submissionTime: string;
   status: 'SUBMITTED' | 'LATE' | 'GRADED';
   grade?: number;
+  fileCount?: number;
 }
 
 export interface SubmissionCreateRequest {
-  content?: string;
+  description?: string;
   files?: File[];
 }
 
@@ -345,24 +346,56 @@ export const assignmentsApi = {
     return (response.data.data || []).map((a: any) => normalizeAssignment(a));
   },
 
-  create: async (courseId: number, data: AssignmentCreateRequest): Promise<Assignment> => {
+  getPdf: async (courseId: number, assignmentId: number, index?: number): Promise<Blob> => {
+    const response = await api.get(`/courses/${courseId}/assignments/${assignmentId}/pdf`, {
+      params: index !== undefined ? { index } : {},
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  create: async (courseId: number, data: AssignmentCreateRequest, files?: File[]): Promise<Assignment> => {
+    const formData = new FormData();
+    formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('file', file);
+      });
+    }
     const response: AxiosResponse<ApiResponse<any>> = await api.post(
       `/courses/${courseId}/assignments/create`,
-      data
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return normalizeAssignment(response.data.data);
   },
 
-  update: async (courseId: number, data: Partial<Assignment> & { id: number }): Promise<Assignment> => {
+  update: async (courseId: number, assignmentId: number, data: Partial<AssignmentCreateRequest>, files?: File[]): Promise<Assignment> => {
+    const formData = new FormData();
+    formData.append('data', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('file', file);
+      });
+    }
     const response: AxiosResponse<ApiResponse<any>> = await api.put(
-      `/courses/${courseId}/assignments/edit`,
-      data
+      `/courses/${courseId}/assignments/${assignmentId}/edit`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return normalizeAssignment(response.data.data);
   },
 
   delete: async (courseId: number, assignmentId: number): Promise<void> => {
-    await api.delete(`/courses/${courseId}/assignments/delete`, { data: { id: assignmentId } });
+    await api.delete(`/courses/${courseId}/assignments/${assignmentId}/delete/`);
   },
 };
 
@@ -377,9 +410,9 @@ export const submissionsApi = {
 
   submit: async (courseId: number, assignmentId: number, data: SubmissionCreateRequest): Promise<Submission> => {
     const formData = new FormData();
-    if (data.content) {
-      formData.append('content', data.content);
-    }
+    // Send request DTO as JSON blob with key 'request'
+    const requestDto = { description: data.description || '' };
+    formData.append('request', new Blob([JSON.stringify(requestDto)], { type: 'application/json' }));
     if (data.files && data.files.length > 0) {
       data.files.forEach((file) => {
         formData.append('file', file);
@@ -412,14 +445,15 @@ export const submissionsApi = {
 
   edit: async (courseId: number, assignmentId: number, submissionId: number, data: SubmissionCreateRequest): Promise<Submission> => {
     const formData = new FormData();
-    if (data.content) {
-      formData.append('content', data.content);
-    }
+    // Send request DTO as JSON blob with key 'request'
+    const requestDto = { description: data.description || '' };
+    formData.append('request', new Blob([JSON.stringify(requestDto)], { type: 'application/json' }));
     if (data.files && data.files.length > 0) {
       data.files.forEach((file) => {
         formData.append('file', file);
       });
     }
+
     const response: AxiosResponse<ApiResponse<Submission>> = await api.put(
       `/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}/edit`,
       formData,
@@ -438,6 +472,13 @@ export const submissionsApi = {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  getCumulativeWeight: async (courseId: number): Promise<number> => {
+    const response: AxiosResponse<ApiResponse<number>> = await api.get(
+      `/courses/${courseId}/cum-weight`
+    );
+    return response.data.data;
   },
 };
 

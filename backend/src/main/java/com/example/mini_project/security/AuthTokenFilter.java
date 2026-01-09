@@ -53,7 +53,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     log.warn("JWT present but invalid for request: {} {}", request.getMethod(), request.getRequestURI());
                 }
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e);
         }
         filterChain.doFilter(request, response);

@@ -1,13 +1,15 @@
 package com.example.mini_project.controllers;
 
-import com.example.mini_project.entities.file.SubmissionFile;
-import com.example.mini_project.entities.submission.*;
-import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.assignment.Assignment;
 import com.example.mini_project.entities.course.Course;
 import com.example.mini_project.entities.course.CourseRole;
+import com.example.mini_project.entities.file.SubmissionFile;
+import com.example.mini_project.entities.submission.*;
+import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.usercourse.UserCourse;
-import com.example.mini_project.repositories.*;
+import com.example.mini_project.repositories.AssignmentRepository;
+import com.example.mini_project.repositories.SubmissionRepository;
+import com.example.mini_project.repositories.UserCourseRepository;
 import com.example.mini_project.service.S3Service;
 import com.example.mini_project.service.UploadPdfService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,18 +18,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.example.mini_project.controllers.UserController.buildResponse;
 
@@ -42,6 +42,7 @@ public class SubmissionController {
 
     @Autowired
     private UploadPdfService uploadPdfService;
+
     public SubmissionController(UserCourseRepository userCourseRepository,
                                 AssignmentRepository assignmentRepository,
                                 SubmissionRepository submissionRepository,
@@ -61,6 +62,7 @@ public class SubmissionController {
 
     /**
      * Index để có thể chọn xem muốn xem submission nào.
+     *
      * @param submissionId
      * @return
      */
@@ -69,13 +71,16 @@ public class SubmissionController {
                                               @RequestParam(value = "index", required = false) Integer index) {
 
         Submission submission = extractSubmission(submissionId);
-        SubmissionFile file;
-        if (index != null && index <= submission.getFiles().size() - 1) {
-            file = submission.getFiles().get(index);
-        } else {
-            // Cái này sẽ được chạy nhiều hơn, và add submission nhiều hơn nên dùng linked list tốt hơn.
-            file = submission.getFiles().get(0);
+        
+        if (submission.getFiles() == null || submission.getFiles().isEmpty()) {
+            return buildResponse(HttpStatus.NOT_FOUND, "Submission: Không có file PDF nào", null);
         }
+        
+        // Default to index 0 (newest file due to @OrderBy DESC)
+        int fileIndex = (index != null && index >= 0 && index < submission.getFiles().size()) 
+                        ? index : 0;
+        
+        SubmissionFile file = submission.getFiles().get(fileIndex);
 
         byte[] pdfBytes =
                 uploadPdfService.loadPdfBytes(file.getS3Key());
@@ -95,11 +100,14 @@ public class SubmissionController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<?> buildSubmission(@PathVariable("course-id") Long courseId,
-                                          @PathVariable("assignment-id") Long assignmentId,
-                                          @RequestPart(value = "file", required = false) List<MultipartFile> files,
-                                          Authentication auth) {
+                                             @PathVariable("assignment-id") Long assignmentId,
+                                             @RequestPart(value = "file") List<MultipartFile> files,
+                                             @RequestPart(value = "request") SubmissionRequestDTO request,
+                                             Authentication auth) {
         // Validation logic
-        User user; Assignment assignment; String validationString;
+        User user;
+        Assignment assignment;
+        String validationString;
         try {
             user = extractStudentFromUserCourse(courseId, auth);
             assignment = extractAssignmentFromUserCourse(assignmentId);
@@ -117,7 +125,9 @@ public class SubmissionController {
         Submission submission = new Submission();
         submission.setUser(user);
         submission.setAssignment(assignment);
+        submission.setDescription(request.getDescription());
         LocalDateTime now = LocalDateTime.now();
+        submission.setSubmissionTime(now);
         if (now.isAfter(assignment.getAssignmentDue())) {
             submission.setStatus(SubmissionStatus.LATE);
         } else {
@@ -143,6 +153,7 @@ public class SubmissionController {
                 "Submission: Thành công!",
                 SubmissionMapper.toDTO(addedSubmission));
     }
+
 
 
     @Transactional
@@ -204,20 +215,23 @@ public class SubmissionController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<?> editSubmission(@PathVariable("submission-id") Long submissionId,
-                                         @RequestPart(value = "file", required = false) List<MultipartFile> files,
-                                         Authentication auth) {
+                                            @RequestPart(value = "file") List<MultipartFile> files,
+                                            @RequestPart(value = "request") SubmissionRequestDTO requestDTO,
+                                            Authentication auth) {
         // Validation logic
         Submission submission;
         try {
             submission = extractSubmission(submissionId);
             authorizeUser(auth, submission);
         } catch (RuntimeException e) {
-            return buildResponse(HttpStatus.BAD_REQUEST, "Edit Submission: " + e.getMessage(), null) ;
+            return buildResponse(HttpStatus.BAD_REQUEST, "Edit Submission: " + e.getMessage(), null);
         }
         if (files == null || files.isEmpty()) {
             return buildResponse(HttpStatus.BAD_REQUEST, "Edit Submission: Cần ít nhất một file", null);
         }
-
+        if (requestDTO.getDescription() != null && !requestDTO.getDescription().isEmpty()) {
+            submission.setDescription(requestDTO.getDescription());
+        }
         // Storing logic
         try {
             for (MultipartFile file : files) {

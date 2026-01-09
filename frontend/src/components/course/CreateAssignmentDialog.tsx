@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { assignmentsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Upload, X, FileIcon } from 'lucide-react';
 
 interface NewAssignmentForm {
   assignmentName: string;
@@ -29,18 +29,41 @@ const CreateAssignmentDialog = ({ courseId, onAssignmentCreated }: CreateAssignm
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<NewAssignmentForm>(initialFormState);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setSelectedFiles(prev => [...prev, ...Array.from(files)]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCreating(true);
     try {
-      await assignmentsApi.create(courseId, formData);
+      await assignmentsApi.create(courseId, formData, selectedFiles.length > 0 ? selectedFiles : undefined);
       toast({
         title: 'Tạo bài tập thành công!',
         description: `${formData.assignmentName} đã được thêm`,
       });
       setIsOpen(false);
       setFormData(initialFormState);
+      setSelectedFiles([]);
       onAssignmentCreated();
     } catch (error: any) {
       toast({
@@ -102,6 +125,64 @@ const CreateAssignmentDialog = ({ courseId, onAssignmentCreated }: CreateAssignm
                 onChange={(e) => updateField('assignmentWeight', Number(e.target.value))}
                 required
               />
+            </div>
+
+            {/* File Upload Section */}
+            <div className="space-y-2">
+              <Label>Tệp đính kèm (PDF)</Label>
+              <div 
+                className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept=".pdf"
+                />
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Nhấp để chọn tệp PDF
+                </p>
+              </div>
+              
+              {selectedFiles.length > 0 && (
+                <div className="space-y-2 mt-3">
+                  <Label className="text-sm text-muted-foreground">
+                    Đã chọn {selectedFiles.length} tệp
+                  </Label>
+                  <div className="max-h-32 overflow-auto space-y-1">
+                    {selectedFiles.map((file, index) => (
+                      <div 
+                        key={`${file.name}-${index}`}
+                        className="flex items-center justify-between p-2 bg-muted rounded-md text-sm"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            ({formatFileSize(file.size)})
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(index);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

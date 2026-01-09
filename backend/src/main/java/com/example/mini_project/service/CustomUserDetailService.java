@@ -15,13 +15,14 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class CustomUserDetailService implements UserDetailsService {
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public CustomUserDetailService(UserRepository userRepository) {
         log.info("Đang khởi tạo CustomUserDetailsSerrvice...");
         this.userRepository = userRepository;
     }
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<User> userOptional = userRepository.findByUsername(username);

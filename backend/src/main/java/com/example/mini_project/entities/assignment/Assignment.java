@@ -12,7 +12,6 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 @Setter
@@ -20,7 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name="assignments")
+@Table(name = "assignments")
 public class Assignment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,7 +37,7 @@ public class Assignment {
 
     // Store user_id của người tạo ra assignment
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="assignment_created_by", nullable = false)
+    @JoinColumn(name = "assignment_created_by", nullable = false)
     private User createdBy;
 
     // S3 file meta data
@@ -47,6 +46,7 @@ public class Assignment {
             cascade = CascadeType.ALL,
             orphanRemoval = true
     )
+    @OrderBy("uploadedAt DESC")
     private List<AssignmentFile> files = new ArrayList<>();
 
     private String objectKey; // Lấy từ S3.

@@ -1,8 +1,8 @@
 package com.example.mini_project.entities.course;
 
+import com.example.mini_project.entities.assignment.Assignment;
 import com.example.mini_project.entities.user.User;
 import com.example.mini_project.entities.usercourse.UserCourse;
-import com.example.mini_project.entities.assignment.Assignment;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -20,20 +20,20 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name="courses")
+@Table(name = "courses")
 @Entity
 public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name="course_code", unique = true)
+    @Column(name = "course_code", unique = true)
     private String courseCode;
 
-    @Column(name="course_name", unique = true)
+    @Column(name = "course_name", unique = true)
     private String courseName;
 
-    @Column(name="end_date")
+    @Column(name = "end_date")
     private LocalDate endDate;
 
 
@@ -45,10 +45,10 @@ public class Course {
 
     // Store user_id của người tạo ra course
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="created_user_id", nullable = false)
+    @JoinColumn(name = "created_user_id", nullable = false)
     private User createdBy;
 
-    @OneToMany(mappedBy="course", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @OneToMany(mappedBy = "course", cascade = CascadeType.PERSIST, orphanRemoval = true)
     @JsonIgnore
     private Set<UserCourse> students = new HashSet<>();
 
@@ -67,16 +67,18 @@ public class Course {
         userCourse.setCourse(null);
     }
 
-    public void addAssignment(Assignment assignment) throws Exception{
+    public void addAssignment(Assignment assignment) throws Exception {
         if (totalAssignmentWeight() >= 100.0) {
             throw new Exception("Add assignment: Tổng phần trăm điểm vượt quá 100%");
         }
         assignment.setCourse(this);
         this.assignmentList.add(assignment);
     }
+
     public void removeAssignment(Assignment assignment) {
         this.assignmentList.remove(assignment);
     }
+
     public Double totalAssignmentWeight() {
         Double result = 0.0;
         for (Assignment a : assignmentList) {

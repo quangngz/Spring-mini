@@ -34,10 +34,13 @@ public class WebSecurityConfig {
     @Autowired
     private AuthTokenFilter authenticationJwtTokenFilter;
 
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
+
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authenticationConfiguration)
-    throws Exception{
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
@@ -68,14 +71,13 @@ public class WebSecurityConfig {
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(List.of(
-                "http://localhost:3001",
-                "http://192.168.1.60:3001/"
-        ));        config.addAllowedMethod("*");
+        config.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
+        config.addAllowedMethod("*");
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
 

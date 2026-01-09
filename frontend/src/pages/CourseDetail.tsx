@@ -23,6 +23,7 @@ const CourseDetail = () => {
     course,
     assignments,
     enrollments,
+    cumulativeWeight,
     isLoading,
     isCreator,
     isTutor,
@@ -81,6 +82,7 @@ const CourseDetail = () => {
         <CourseHeader
           course={course}
           enrollmentsCount={enrollments.length}
+          cumulativeWeight={cumulativeWeight}
           isCreator={isCreator}
           onDeleteCourse={deleteCourse}
           onEditCourse={() => setIsEditCourseOpen(true)}
