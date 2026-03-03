@@ -1,6 +1,7 @@
 # Spring-mini
 
 A Learning Management System (LMS) built with Spring Boot and React.
+**demo available here:** http://ec2-16-51-3-160.ap-southeast-4.compute.amazonaws.com/
 
 ## Tech Stack
 
